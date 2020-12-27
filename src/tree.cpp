@@ -608,3 +608,27 @@ void TreeNode::recursive_get_label(TreeNode* node){
     if(node->sibling)
         recursive_get_label(node->sibling);
 }
+
+void TreeNode::gen_code(TreeNode* node){
+    gen_header();
+}
+
+void TreeNode::gen_header(){
+    cout<<"\t.file\t"<< '"' <<filename<< '"' <<endl;
+    cout<<"\t.text"<<endl;
+}
+
+void TreeNode::recursive_gen_code(TreeNode * node){
+
+}
+
+// void TreeNode::gen_decl(TreeNode * node){//只关心全局变量
+//     switch(node->nodeType){
+//         case NODE_STMT:
+//         {
+//             switch(node->stype){
+//                 if()
+//             }
+//         }
+//     }
+// }

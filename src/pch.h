@@ -19,4 +19,6 @@
 #include <stack>
 #include <unordered_map>
 
+extern std::string filename;
+
 #endif

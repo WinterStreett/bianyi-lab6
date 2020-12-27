@@ -129,18 +129,25 @@ public:
     bool isConst;//如果是表达式节点，标记它是不是常量类型
     bool isdecl;//标记一个标识符，说明它是要被定义的变量名
 
-public:
+public://类型检查
     void check(TreeNode*);
 private:
     ExpType type_check(TreeNode *);
 
-private:
+private://打标签
     static int label_seq;
     string new_label(void);
     void recursive_get_label(TreeNode* );
 public:
     void get_label(TreeNode*);
     Label label;
+
+public://代码生成
+    void gen_code(TreeNode*);
+private:
+    void gen_header();//生成头部信息
+    void recursive_gen_code(TreeNode *);//递归生成代码
+    void gen_decl(TreeNode *);//生成全局变量
 
 public:
     static string nodeType2String (NodeType type);
