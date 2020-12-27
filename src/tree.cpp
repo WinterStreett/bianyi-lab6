@@ -2,6 +2,7 @@
 long int current_id = 0;
 
 int TreeNode::label_seq = 0;
+int TreeNode::str_num = 0;
 
 void TreeNode::addChild(TreeNode* child) {
     if(this->child == NULL)
@@ -629,16 +630,36 @@ void TreeNode::recursive_gen_code(TreeNode * node){
 
 void TreeNode::gen_decl(TreeNode * node){//只关心全局变量和常量
     cout<<"\t.data"<<endl;//全局变量存在data段里
-    gen_decl_var(node);//
+    gen_decl_var(node, false);//
+    cout<<endl;
     cout<<"\t.rodata"<<endl;//全局常量存在rodata里
-    gen_decl_const(node);
+    gen_decl_var(node, true);
 }
 
-void TreeNode::gen_decl_var(TreeNode * node){
+void TreeNode::gen_decl_var(TreeNode *node, bool isdeclConst)
+{
     //由语法限制，从根节点出发，只能碰到函数声明结点和变量声明结点
-    if(node->nodeType == NODE_FUNC || ((node->nodeType == NODE_STMT)&&(node->stype == STMT_DECL_CONST)))
-    //函数之内的全是局部变量，这里不管，直接返回，这里也不管常量
-        return;
+    if(!isdeclConst){
+        if(node->nodeType == NODE_FUNC)
+        //函数之内的全是局部变量，这里不管，直接返回
+            goto goSibling;
+        if((node->nodeType == NODE_STMT)&&(node->stype == STMT_DECL_CONST))
+            goto goSibling;//不管常量声明
+    }
+    else{
+        if((node->nodeType == NODE_STMT)&&(node->stype == STMT_DECL))
+            goto goSibling;//不管变量声明
+        if(node->nodeType == NODE_CONST){
+            if(node->expType == EXP_STRING){
+                cout<<"STR"<<TreeNode::str_num++<<":"<<endl;
+                cout<<"\t.string "<<'"'<<node->str_val<<'"'<<endl;
+            if(node->sibling)
+                gen_decl_var(node->sibling, isdeclConst);
+            goto goSibling;
+            }
+        }
+    }
+
     if(node->nodeType == NODE_VARDEF){
         TreeNode* child1 = node->child, *child2 = node->child->sibling;
         //声明全局变量
@@ -701,15 +722,11 @@ void TreeNode::gen_decl_var(TreeNode * node){
             cout<<"0"<<endl;
         }
 
-        if(node->sibling)
-            gen_decl_var(node->sibling);
-        return;
+        goto goSibling;
     }
     if(node->child)
-        gen_decl_var(node->child);
+        gen_decl_var(node->child, isdeclConst);
+goSibling:
     if(node->sibling)
-        gen_decl_var(node->sibling);
-}
-void TreeNode::gen_decl_const(TreeNode * node){
-    return;
+        gen_decl_var(node->sibling, isdeclConst);
 }

@@ -148,8 +148,8 @@ private:
     void gen_header();//生成头部信息
     void recursive_gen_code(TreeNode *);//递归生成代码
     void gen_decl(TreeNode *);//给全局变量和字符串分配空间、
-    void gen_decl_var(TreeNode *);
-    void gen_decl_const(TreeNode *);
+    void gen_decl_var(TreeNode *, bool isdeclConst);//isdeclConst：是否是给常量分配空间
+    static int str_num;
 
 
 public:

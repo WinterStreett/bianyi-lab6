@@ -7,14 +7,17 @@
 	.size	a, 4
 a:
 	.long	1
+	.globl	t
+	.type	t, @object
+	.size	t, 1
+t:
+	.byte	0
+
+	.rodata
 	.globl	s
 	.type	s, @object
 	.size	s, 1
 s:
 	.byte	97
-	.globl	t
-	.type	t, @object
-	.size	t, 1
-t:
-	.byte	10
-	.rodata
+STR0:
+	.string "s:%d"
