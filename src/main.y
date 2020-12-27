@@ -3,6 +3,7 @@
     #define YYSTYPE TreeNode *  
     TreeNode* root;
     extern int lineno;
+    extern bool is_use_stack;
     int yylex();
     int yyerror( char const * );
 %}
@@ -211,14 +212,18 @@ IOFunc
 : SCANF LBRACKET STRING COMMA scanfParams RBRACKET {
     $$ = new TreeNode($3->lineno, NODE_STMT);
     $$->stype = STMT_IOFUNC;
+    $$->var_name = "scanf";
     $$->addChild($3);
     $$->addChild($6);
+    is_use_stack = true;
 }
 | PRINTF LBRACKET STRING COMMA funcRParams RBRACKET {
     $$ = new TreeNode($3->lineno, NODE_STMT);
     $$->stype = STMT_IOFUNC;
+    $$->var_name = "printf";
     $$->addChild($3);
     $$->addChild($5);
+    is_use_stack = true;
 }
 ;
 

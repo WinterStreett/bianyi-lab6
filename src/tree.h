@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "type.h"
 extern long int current_id;
+extern bool is_use_stack;
 enum NodeType
 {
     NODE_EMPTY,//空节点，对应没有内容的节点
@@ -144,6 +145,8 @@ public:
 
 public://代码生成
     void gen_code(TreeNode*);
+    static TreeNode* nowFunc;//在遍历语法树的过程中，处于哪一个函数结点中
+    bool isUseStack;//给函数结点的标记，说明这个函数有没有使用栈
 private:
     void gen_header();//生成头部信息
     void recursive_gen_code(TreeNode *);//递归生成代码

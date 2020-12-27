@@ -23,7 +23,8 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                 node->child->sibling->isConst = true;//函数名对应的变量isConst属性为真
                 nextTable = new socpetable(table);
                 nextTable->initSocpe(node->lineno, node->var_name); 
-                isJustOneBlock = false;  
+                isJustOneBlock = false;
+                TreeNode::nowFunc = node;  
                 break;
         case NODE_VAR:
             if(node->isdecl)
@@ -78,6 +79,9 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                     nextTable->initSocpe(node->lineno, "if"); 
                     isJustOneBlock = false;
                     goto ergodic;       
+                case STMT_IOFUNC:
+                    TreeNode::nowFunc->isUseStack = true;
+                    break;
                 default:
                     break;
             }

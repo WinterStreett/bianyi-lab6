@@ -6,6 +6,7 @@ extern TreeNode *root;
 extern FILE *yyin;
 extern int yyparse();
 
+
 string filename;
 
 using namespace std;
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
         // root->printAST();
         root->gen_code(root);
     }
+
     // cout<<endl;
     // symtable.printTable();
     // cout<<symtable.nextid()<<endl;

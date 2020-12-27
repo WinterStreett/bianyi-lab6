@@ -1,8 +1,9 @@
 #include "tree.h"
 long int current_id = 0;
-
+TreeNode* TreeNode::nowFunc = nullptr;
 int TreeNode::label_seq = 0;
 int TreeNode::str_num = 0;
+bool is_use_stack = false;
 
 void TreeNode::addChild(TreeNode* child) {
     if(this->child == NULL)
@@ -32,6 +33,7 @@ TreeNode::TreeNode(int lineno, NodeType type) {
     this->nodeType = type;
     this->isdecl = false;
     this->isConst = false;
+    this->isUseStack = false;
 }
 
 void TreeNode::genNodeId() {
@@ -99,25 +101,33 @@ void TreeNode::printSpecialInfo() {
             }
             break;
         case NODE_VAR:
-            cout<<setw(16)<<" varname: "<<this->var_name<<setw(16)<<"type: "<<this->type->getTypeInfo();
+            cout<<setw(16)<<"varname: "<<this->var_name<<setw(16)<<"type: "<<this->type->getTypeInfo();
             break;
         case NODE_EXPR:
-            cout<<setw(16)<<" operator: "<<opType2String(this->optype)<<setw(16)<<" type: "<<this->type->getTypeInfo();
+            cout<<setw(16)<<"operator: "<<opType2String(this->optype)<<setw(16)<<"type: "<<this->type->getTypeInfo();
             break;
         case NODE_STMT:
-            cout<<setw(16)<<" stmt: "<<sType2String(this->stype);
+            cout<<setw(16)<<"stmt: "<<sType2String(this->stype);
             if(this->stype == STMT_ASSG){
                 cout<<"   assg_type: "<<opType2String(this->optype);
+            }
+            else if(this->stype == STMT_IOFUNC){
+                cout<<"   name: "<<this->var_name;
             }
             break;
         case NODE_TYPE:
             cout<<setw(16)<<" type: "<<this->type->getTypeInfo();
             break;
         case NODE_FUNC:
-            cout<<setw(16)<<" func_name: "<<this->var_name<<setw(16)<<" type: "<<this->type->getTypeInfo();
+            cout<<setw(16)<<"func_name: "<<this->var_name<<setw(16)<<"return_type: "<<this->type->getTypeInfo();
+            cout<<setw(16)<<"use_stack: ";
+            if(this->isUseStack)
+                cout<<"True";
+            else
+                cout<<"False";
             break;
         case NODE_LVAL:
-            cout<<setw(16)<<" type: "<<this->type->getTypeInfo();
+            cout<<setw(16)<<"type: "<<this->type->getTypeInfo();
             break;
         default:
             break;
@@ -497,7 +507,7 @@ string TreeNode::new_label(){
 }
 
 void TreeNode::get_label(TreeNode* node){//递归的外层函数
-    node->label.begin_label = "_start";
+    node->label.begin_label = "main";
     recursive_get_label(node);
 }
 
@@ -615,17 +625,45 @@ void TreeNode::recursive_get_label(TreeNode* node){
 }
 
 void TreeNode::gen_code(TreeNode* node){
+    assert(node!=nullptr);
     gen_header();
     gen_decl(node);
+    //由于还没有实现函数，所以手动输出main函数的声明
+    string func_name = "main";
+    cout<<"\t.text"<<endl;
+	cout<<"\t.globl "<<func_name<<endl;
+	cout<<"\t.type  "<<func_name<<", @function"<<endl;
+    cout<<func_name<<":"<<endl;
+    if(is_use_stack)//这个全局布尔变量说明main函数有没有使用栈，自定义函数可以使用结点自带的isUseStack代替
+    {
+        cout<<"\tleal\t4(%esp), %ecx"<<endl;
+        cout<<"\tandl\t$-16, %esp"<<endl;
+        cout<<"\tpushl\t-4(%ecx)"<<endl;
+        cout<<"\tpushl\t%ebp"<<endl;
+        cout<<"\tmovl\t%esp, %ebp"<<endl;
+        cout<<"\tpushl\t%ecx"<<endl;
+        cout<<"\tsubl\t$4, %esp"<<endl;
+        recursive_gen_code(node);
+        cout<<"\tmovl\t-4(%ebp), %ecx"<<endl;
+        cout<<"\tleave"<<endl;
+        cout<<"\tleal\t-4(%ecx), %esp"<<endl;
+        cout<<"\tret"<<endl;
+    }
+    else{
+        cout<<"\tpushl\t%ebp"<<endl;
+        cout<<"\tmovl\t%esp, %ebp"<<endl;
+        recursive_gen_code(node);
+        cout<<"\tpopl\t%ebp"<<endl;
+        cout<<"\tret"<<endl;
+    }
+    //如果函数实现了，上面的几行可以删除
+
+    cout<<"\t"<<R"(.section  .note.GNU-stack,"",@progbits)";
 }
 
 void TreeNode::gen_header(){
     cout<<"\t.file\t"<< '"' <<filename<< '"' <<endl;
     cout<<"\t.text"<<endl;
-}
-
-void TreeNode::recursive_gen_code(TreeNode * node){
-    return;
 }
 
 void TreeNode::gen_decl(TreeNode * node){//只关心全局变量和常量
@@ -640,8 +678,7 @@ void TreeNode::gen_decl_var(TreeNode *node, bool isdeclConst)
 {
     //由语法限制，从根节点出发，只能碰到函数声明结点和变量声明结点
     if(!isdeclConst){
-        if(node->nodeType == NODE_FUNC)
-        //函数之内的全是局部变量，这里不管，直接返回
+        if(node->nodeType == NODE_FUNC)//函数之内的全是局部变量，这里不管，直接返回
             goto goSibling;
         if((node->nodeType == NODE_STMT)&&(node->stype == STMT_DECL_CONST))
             goto goSibling;//不管常量声明
@@ -729,4 +766,20 @@ void TreeNode::gen_decl_var(TreeNode *node, bool isdeclConst)
 goSibling:
     if(node->sibling)
         gen_decl_var(node->sibling, isdeclConst);
+}
+
+void TreeNode::recursive_gen_code(TreeNode * node){
+    switch(node->nodeType){
+        case NODE_EXPR:
+        {
+            switch(node->optype){
+                case OP_ADD:
+                {
+                    TreeNode *child1 = node->child, *child2 = node->child->sibling;
+                    recursive_gen_code(child1);
+                    recursive_gen_code(child2);
+                }
+            }
+        }
+    }
 }
