@@ -1,3 +1,7 @@
-for(int i=1;i<10;i++){
-    i*10;
+int a = 1;
+char s = 'a';
+char t = 10;
+
+void main(){
+    return;
 }

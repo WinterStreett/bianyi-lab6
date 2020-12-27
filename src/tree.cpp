@@ -410,7 +410,11 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                     cerr<< "Variable values cannot be assigned to constants! line: "<<node->lineno << endl;  
                 }
                 else if(node->child->expType!=node->child->sibling->expType){
-                    cerr<< "Declaration statement type match fault! line: "<<node->lineno << endl;  
+                    if((node->child->expType!=EXP_BOOL)&&(node->child->sibling->expType==EXP_STRING))
+                        cerr<< "Declaration statement type match fault! line: "<<node->lineno << endl;
+                    else{
+                        cerr<< "Declaration statement type do not match but we fix it! line: "<<node->lineno << endl;
+                    }  
                 }
             }
             break;
@@ -611,6 +615,7 @@ void TreeNode::recursive_get_label(TreeNode* node){
 
 void TreeNode::gen_code(TreeNode* node){
     gen_header();
+    gen_decl(node);
 }
 
 void TreeNode::gen_header(){
@@ -619,16 +624,92 @@ void TreeNode::gen_header(){
 }
 
 void TreeNode::recursive_gen_code(TreeNode * node){
-
+    return;
 }
 
-// void TreeNode::gen_decl(TreeNode * node){//只关心全局变量
-//     switch(node->nodeType){
-//         case NODE_STMT:
-//         {
-//             switch(node->stype){
-//                 if()
-//             }
-//         }
-//     }
-// }
+void TreeNode::gen_decl(TreeNode * node){//只关心全局变量和常量
+    cout<<"\t.data"<<endl;//全局变量存在data段里
+    gen_decl_var(node);//
+    cout<<"\t.rodata"<<endl;//全局常量存在rodata里
+    gen_decl_const(node);
+}
+
+void TreeNode::gen_decl_var(TreeNode * node){
+    //由语法限制，从根节点出发，只能碰到函数声明结点和变量声明结点
+    if(node->nodeType == NODE_FUNC || ((node->nodeType == NODE_STMT)&&(node->stype == STMT_DECL_CONST)))
+    //函数之内的全是局部变量，这里不管，直接返回，这里也不管常量
+        return;
+    if(node->nodeType == NODE_VARDEF){
+        TreeNode* child1 = node->child, *child2 = node->child->sibling;
+        //声明全局变量
+        string type1 = child1->type->getTypeInfo(), type2;
+        cout<<"\t.globl\t"<<child1->var_name<<endl;
+        //默认变量只能为int或char类型
+        if(type1 == "int"){
+            //int类型变量
+            cout<<"\t.align 4"<<endl<<"\t.type\t"<<child1->var_name<<", @object"<<endl;
+            cout<<"\t.size\t"<<child1->var_name<<", 4"<<endl;
+            cout<<child1->var_name<<":"<<endl;
+            cout<<"\t.long\t";
+        }
+        else if(type1 == "char"){
+            cout<<"\t.type\t"<<child1->var_name<<", @object"<<endl;
+            cout<<"\t.size\t"<<child1->var_name<<", 1"<<endl;
+            cout<<child1->var_name<<":"<<endl;
+            cout<<"\t.byte\t";
+        }
+        else{
+            cout<<"var shouldn't be "<<type1<<" type! at line: "<<child1->lineno<<endl;
+            exit(-1);
+        }
+        if(child2)//如果声明语句中有初始值,这个初始值一定是一个字面常量
+        {
+            assert(child2->nodeType == NODE_CONST);
+            type2 = child2->type->getTypeInfo();
+            //这里需要考虑一种情况，即用int给char赋值，由于int可能会超出char的范围
+            //所以int给char赋值要取模
+            if(type1=="char"){
+                if(type2=="int"){
+                    cout<<(child2->int_val%0x100)<<endl;
+                }
+                else if(type2=="char"){
+                    cout<<int(child2->ch_val)<<endl;
+                }
+                else{
+                    cout<<"initValue shouldn't be "<<type2<<" type! at line: "<<child2->lineno<<endl;
+                    exit(-1);
+                }
+            }
+            else if(type1=="int"){
+                if(type2=="int"){
+                    cout<<child2->int_val<<endl;
+                }
+                else if(type2=="char"){
+                    cout<<int(child2->ch_val)<<endl;
+                }
+                else{
+                    cout<<"initValue shouldn't be "<<type2<<" type! at line: "<<child2->lineno<<endl;
+                    exit(-1);
+                }
+            }
+            else{
+                    cout<<"var shouldn't be "<<type1<<" type! at line: "<<child1->lineno<<endl;
+                    exit(-1);               
+            }
+        }
+        else{//没有初始值的话，所有变量的初始值设为0
+            cout<<"0"<<endl;
+        }
+
+        if(node->sibling)
+            gen_decl_var(node->sibling);
+        return;
+    }
+    if(node->child)
+        gen_decl_var(node->child);
+    if(node->sibling)
+        gen_decl_var(node->sibling);
+}
+void TreeNode::gen_decl_const(TreeNode * node){
+    return;
+}

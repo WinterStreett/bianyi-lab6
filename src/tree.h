@@ -147,7 +147,10 @@ public://代码生成
 private:
     void gen_header();//生成头部信息
     void recursive_gen_code(TreeNode *);//递归生成代码
-    void gen_decl(TreeNode *);//生成全局变量
+    void gen_decl(TreeNode *);//给全局变量和字符串分配空间、
+    void gen_decl_var(TreeNode *);
+    void gen_decl_const(TreeNode *);
+
 
 public:
     static string nodeType2String (NodeType type);

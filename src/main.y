@@ -29,14 +29,14 @@ program
 
 compUnit
 : funcDef {$$ = new TreeNode($1->lineno, NODE_COMP);$$->addChild($1);}
-| statement {$$ = new TreeNode($1->lineno, NODE_COMP);$$->addChild($1);}
+| decl SEMICOLON {$$ = new TreeNode($1->lineno, NODE_COMP);$$->addChild($1);}
 | compUnit funcDef {
     TreeNode* node = new TreeNode($2->lineno, NODE_COMP);
     node->addChild($2);
     $$ = $1;
     $$->addSibling(node);
 }
-| compUnit statement {
+| compUnit decl SEMICOLON {
     TreeNode* node = new TreeNode($2->lineno, NODE_COMP);
     node->addChild($2);
     $$ = $1;
@@ -245,6 +245,10 @@ block
 }
 ;
 
+decl
+: declaration{$$ = $1;}
+| constDeclaration {$$ = $1;}
+;
 
 declaration
 :  T varDef {
