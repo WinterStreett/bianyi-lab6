@@ -1,10 +1,7 @@
 int a = 1;
 const char s = 'a';
-char t ;
 
 void main(){
-
-    int a =1;
-    printf("s:%d",1);
+    (1+a)||s&&(1+2)&&!a;
     return;
 }

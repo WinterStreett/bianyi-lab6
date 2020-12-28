@@ -540,6 +540,7 @@ primaryExp
 : LBRACKET expr RBRACKET {$$ = $2;}
 | LVal {
     $$=$1;
+    $$->optype = OP_NULL;
 }
 | INC IDENTIFIER %prec NOT  {
     TreeNode* node = new TreeNode($2->lineno, NODE_EXPR);
@@ -571,12 +572,15 @@ primaryExp
 }
 | INTEGER {
     $$=$1; 
+    $$->optype = OP_NULL;
 }
 | CHAR {
     $$=$1; 
+    $$->optype = OP_NULL;
 } 
 | STRING {
     $$=$1; 
+    $$->optype = OP_NULL;
 }
 ;
 

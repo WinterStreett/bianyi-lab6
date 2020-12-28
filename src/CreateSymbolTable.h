@@ -10,4 +10,5 @@ extern bool isJustOneBlock;
 extern bool isDeclConst;
 extern string varType;
 
+
 void createSymbolTable(TreeNode* node, socpetable* table);//创建符号表的函数，递归遍历语法树一次，建立完整的符号表

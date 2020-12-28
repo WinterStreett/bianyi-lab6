@@ -8,6 +8,9 @@ socpetable* nextTable = globalTable;//方便递归，下一级作用域的指针
 bool isJustOneBlock = true;
 bool isDeclConst = false;
 string varType;
+extern map<string, int> stringTable;
+int str_num = 0;
+
 
 void createSymbolTable(TreeNode* node, socpetable* table){
     if(node==nullptr)
@@ -17,7 +20,28 @@ void createSymbolTable(TreeNode* node, socpetable* table){
         case NODE_FUNCPARAM:
             varType = node->child->type->getTypeInfo();
             break;
+        case NODE_CONST://将程序中出现的所有string插入stingTable中
+        {
+            if(node->type->getTypeInfo() == "string"){
+                if(stringTable.find(node->str_val) == stringTable.end()){//字符串不在表中
+                    stringTable.insert(pair<string,int>(node->str_val,str_num));
+                    node->str_id = str_num++;
+                }
+                else{//字符串已在表中
+                    node->str_id = stringTable.find(node->str_val)->second;
+                }
+            }
+            break;
+        }
         case NODE_FUNC:
+                if(node->var_name=="main")
+                {
+                    TreeNode* temp = node->child;
+                    while(temp->sibling!=nullptr){
+                        temp=temp->sibling;
+                    }
+                    TreeNode::mainNode = temp;
+                }
                 table->insert(node->var_name, symtable.nextid());
                 symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),true);
                 node->child->sibling->isConst = true;//函数名对应的变量isConst属性为真
@@ -29,6 +53,8 @@ void createSymbolTable(TreeNode* node, socpetable* table){
         case NODE_VAR:
             if(node->isdecl)
             {
+                if(table == globalTable)
+                    node->isGlobal = true;
                 table->insert(node->var_name, symtable.nextid());
                 node->type = Type::getType(varType);
                 if(!isDeclConst)
@@ -43,6 +69,7 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                 int id = table->search(node->var_name);
                 node->type = Type::getType(symtable.getType(id));
                 node->isConst = symtable.isConstVar(id);
+                node->isGlobal = symtable.isGlobal(id);
             }
             break;
         case NODE_STMT:

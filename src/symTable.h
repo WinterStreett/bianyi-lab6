@@ -30,6 +30,7 @@ public:
     unsigned int nextid();
 	string getType(int id);
 	bool isConstVar(int id);
+	bool isGlobal(int id);
 
 private:
 	map<int, symInfo*> table;

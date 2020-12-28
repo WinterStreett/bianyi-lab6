@@ -2,8 +2,10 @@
 long int current_id = 0;
 TreeNode* TreeNode::nowFunc = nullptr;
 int TreeNode::label_seq = 0;
-int TreeNode::str_num = 0;
 bool is_use_stack = false;
+map<string, int> stringTable;
+TreeNode* TreeNode::mainNode = nullptr;
+
 
 void TreeNode::addChild(TreeNode* child) {
     if(this->child == NULL)
@@ -34,6 +36,8 @@ TreeNode::TreeNode(int lineno, NodeType type) {
     this->isdecl = false;
     this->isConst = false;
     this->isUseStack = false;
+    this->isGlobal = false;
+    this->exprResult = false;
 }
 
 void TreeNode::genNodeId() {
@@ -359,16 +363,19 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                 return EXP_INT;
             }
             else if(op==OP_ADD||op==OP_SUB||op==OP_MUL||op==OP_DIV||op==OP_MOD){//广义加法，两个操作数应该都是整数，返回类型也是整数
-            //类型可以转换的：char bool
+            //类型可以转换的：char 
+                TreeNode *child1=node->child, *child2=node->child->sibling;
                 if(node->child->expType==EXP_NOTYPE||node->child->sibling->expType==EXP_NOTYPE){
                     cerr<< "undefine type at line:"<<node->lineno<<" "<< opType2String(op) << endl;
                 }
-                else if(node->child->expType==EXP_STRING||node->child->sibling->expType==EXP_STRING)
-                {
-                    cerr<< "Operands cant be string! line:"<<node->lineno<<" "<< opType2String(op) << endl;
-                }
-                else if(node->child->expType!=EXP_INT||node->child->sibling->expType!=EXP_INT){
-                    cerr<<"Operator wants int but get other, and we turn it to int at line:"<<node->lineno<<" "<< opType2String(op) << endl;
+                else if(child1->expType!=child2->expType){
+                    if(child1->expType==EXP_STRING||child2->expType==EXP_STRING||child1->expType==EXP_CHAR||child2->expType==EXP_CHAR)
+                    {
+                        cerr<<"Operands type match fault! at line: "<<node->lineno<<" "<< opType2String(op) << endl;
+                    }
+                    else{
+                        cerr<<"Operator wants int but get other, and we turn it to int at line:"<<node->lineno<<" "<< opType2String(op) << endl;
+                    }
                 }
                 return EXP_INT;
             }
@@ -589,21 +596,32 @@ void TreeNode::recursive_get_label(TreeNode* node){
                 case OP_AND:
                 {
                     TreeNode* child1 = node->child,*child2 = node->child->sibling;
-                    child1->label.true_label = new_label();
+                    if(node->label.true_label=="")
+                        node->label.true_label = new_label();
+                    if(node->label.false_label=="")
+                        node->label.false_label = new_label();
+                    
                     child1->label.false_label= child2->label.false_label = node->label.false_label;
                     child2->label.true_label = node->label.true_label;
                     break;
                 }
                 case OP_OR:
                 {
+                    if(node->label.true_label=="")
+                        node->label.true_label = new_label();
+                    if(node->label.false_label=="")
+                        node->label.false_label = new_label();
                     TreeNode* child1 = node->child,*child2 = node->child->sibling;
-                    child1->label.false_label = new_label();
                     child1->label.true_label = child2->label.true_label = node->label.true_label;
                     child2->label.false_label = node->label.false_label;
                     break;
                 }
                 case OP_NOT:
                 {
+                    if(node->label.true_label=="")
+                        node->label.true_label = new_label();
+                    if(node->label.false_label=="")
+                        node->label.false_label = new_label();
                     TreeNode* child = node->child;
                     child->label.true_label = node->label.false_label;
                     child->label.false_label = node->label.true_label;
@@ -643,7 +661,7 @@ void TreeNode::gen_code(TreeNode* node){
         cout<<"\tmovl\t%esp, %ebp"<<endl;
         cout<<"\tpushl\t%ecx"<<endl;
         cout<<"\tsubl\t$4, %esp"<<endl;
-        recursive_gen_code(node);
+        recursive_gen_code(mainNode);
         cout<<"\tmovl\t-4(%ebp), %ecx"<<endl;
         cout<<"\tleave"<<endl;
         cout<<"\tleal\t-4(%ecx), %esp"<<endl;
@@ -652,7 +670,7 @@ void TreeNode::gen_code(TreeNode* node){
     else{
         cout<<"\tpushl\t%ebp"<<endl;
         cout<<"\tmovl\t%esp, %ebp"<<endl;
-        recursive_gen_code(node);
+        recursive_gen_code(mainNode);
         cout<<"\tpopl\t%ebp"<<endl;
         cout<<"\tret"<<endl;
     }
@@ -672,6 +690,11 @@ void TreeNode::gen_decl(TreeNode * node){//只关心全局变量和常量
     cout<<endl;
     cout<<"\t.rodata"<<endl;//全局常量存在rodata里
     gen_decl_var(node, true);
+    //把string存在rodata段里
+    for(auto iter=stringTable.begin();iter!=stringTable.end();iter++){
+        cout<<"STR"<<iter->second<<":"<<endl;
+        cout<<"\t.string "<<'"'<<iter->first<<'"'<<endl;
+    }
 }
 
 void TreeNode::gen_decl_var(TreeNode *node, bool isdeclConst)
@@ -686,15 +709,6 @@ void TreeNode::gen_decl_var(TreeNode *node, bool isdeclConst)
     else{
         if((node->nodeType == NODE_STMT)&&(node->stype == STMT_DECL))
             goto goSibling;//不管变量声明
-        if(node->nodeType == NODE_CONST){
-            if(node->expType == EXP_STRING){
-                cout<<"STR"<<TreeNode::str_num++<<":"<<endl;
-                cout<<"\t.string "<<'"'<<node->str_val<<'"'<<endl;
-            if(node->sibling)
-                gen_decl_var(node->sibling, isdeclConst);
-            goto goSibling;
-            }
-        }
     }
 
     if(node->nodeType == NODE_VARDEF){
@@ -769,17 +783,389 @@ goSibling:
 }
 
 void TreeNode::recursive_gen_code(TreeNode * node){
-    switch(node->nodeType){
-        case NODE_EXPR:
+    if(node->nodeType == NODE_STMT)
+    {
+        stmt_gen_code(node);
+        if(node->sibling)
+            recursive_gen_code(node->sibling);
+    }
+    else if(node->nodeType == NODE_EXPR)
+    {
+        expr_gen_code(node);
+        if(node->sibling)
+            recursive_gen_code(node->sibling);
+    }
+    else{
+        if(node->child)
+            recursive_gen_code(node->child);
+        if(node->sibling)
+            recursive_gen_code(node->sibling);
+    }
+}
+
+void TreeNode::stmt_gen_code(TreeNode * node){
+    switch(node->stype){
+        default:
         {
-            switch(node->optype){
-                case OP_ADD:
+            if(node->child)
+                recursive_gen_code(node->child);
+            if(node->sibling)
+                recursive_gen_code(node->sibling);
+        }    
+    }
+}
+void TreeNode::expr_gen_code(TreeNode * node){
+    OperatorType op = node->optype;
+    if(op==OP_ADD||op==OP_SUB||op==OP_MUL||op==OP_DIV||op==OP_MOD){
+        TreeNode *child1 = node->child, *child2 = node->child->sibling;
+        //任何情况下，一定要保证左孩子结点的结果保存在eax，而右孩子的结点结果保存在ecx
+        if(child1->optype != OP_NULL)
+            expr_gen_code(child1);
+        else
+        {
+            if(child1->nodeType == NODE_CONST)
+                const_gen_code(child1, "eax");
+            else if(child1->nodeType == NODE_VAR)
+                var_gen_code(child1,"eax");
+            else{
+                cerr<<"Operands type wrong! at line: "<<child1->lineno<<endl;
+                exit(-1);
+            }
+        }
+        
+        if(child2->optype != OP_NULL)
+        {
+            cout<<"\tpushl\t%eax"<<endl;
+            expr_gen_code(child2);
+            cout<<"\tmovl\t%eax, %ecx"<<endl;
+            cout<<"\tpopl\t%eax"<<endl;
+            // cout<<"\taddl\t%edx, %eax"<<endl;
+        }
+        else{//右子树为叶节点
+            if(child2->nodeType == NODE_CONST)
+                const_gen_code(child2, "ecx");
+            else if(child2->nodeType == NODE_VAR)
+                var_gen_code(child2,"ecx");
+            else{
+                cerr<<"Operands type wrong! at line: "<<child2->lineno<<endl;
+                exit(-1);
+            }
+            // cout<<"\taddl\t%edx, %eax"<<endl;
+        }
+        inst2string(op);//根据不同的操作符，输出不同的汇编指令
+        return;
+    }
+    else if(op==OP_OPT||op==OP_NEG){
+        TreeNode* child = node->child;
+        if(child->optype != OP_NULL)
+            expr_gen_code(child);
+        else{
+            if(child->nodeType == NODE_CONST)
+                const_gen_code(child, "eax");
+            else if(child->nodeType == NODE_VAR)
+                var_gen_code(child,"eax");
+            else{
+                cerr<<"Operands type wrong! at line: "<<child->lineno<<endl;
+                exit(-1);
+            }
+        }
+        inst2string(op);
+        return;
+    }
+    else if(op==OP_OR||op==OP_AND||op==OP_NOT){
+        TreeNode* child1 = node->child, *child2;
+        if(child1->optype != OP_NULL)
+            expr_gen_code(child1);
+        else{
+            if(child1->nodeType == NODE_CONST)
+                const_gen_code(child1, "eax");
+            else if(child1->nodeType == NODE_VAR)
+                var_gen_code(child1,"eax");
+            else{
+                cerr<<"Operands type wrong! at line: "<<child1->lineno<<endl;
+                exit(-1);
+            }
+        }
+
+        if(op==OP_OR||op==OP_NOT){
+            switch(child1->optype){
+                case OP_LT:
                 {
-                    TreeNode *child1 = node->child, *child2 = node->child->sibling;
-                    recursive_gen_code(child1);
-                    recursive_gen_code(child2);
+                    cout<<"\tjl\t"<<child1->label.true_label<<endl;
+                    break;
+                }
+                case OP_BT:
+                {
+                    cout<<"\tjg\t"<<child1->label.true_label<<endl;
+                    break;
+                }
+                case OP_LTEQ:
+                {
+                    cout<<"\tjle\t"<<child1->label.true_label<<endl;
+                    break;  
+                }
+                case OP_BTEQ:
+                {
+                    cout<<"\tjge\t"<<child1->label.true_label<<endl;
+                    break;
+                }
+                case OP_EQ:
+                {
+                    cout<<"\tje\t"<<child1->label.true_label<<endl;
+                    break;
+                }
+                case OP_NQ:
+                {
+                    cout<<"\tjne\t"<<child1->label.true_label<<endl;
+                    break;
+                }
+                case OP_AND:
+                {
+                    break;
+                }
+                case OP_OR:
+                {
+                    break;
+                }
+                case OP_NOT:
+                {
+                    break;
+                }
+                default:
+                {
+                    cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                    cout<<"\tjne\t"<<child1->label.true_label<<endl;//不相等跳转
+                    break;
                 }
             }
+            if(op==OP_NOT){
+
+                return;
+            }
+        }
+        else /*if(op==OP_AND)*/
+        {
+            switch(child1->optype){
+                case OP_LT:
+                {
+                    cout<<"\tjge\t"<<child1->label.false_label<<endl;
+                    break;
+                }
+                case OP_BT:
+                {
+                    cout<<"\tjle\t"<<child1->label.false_label<<endl;
+                    break;
+                }
+                case OP_LTEQ:
+                {
+                    cout<<"\tjg\t"<<child1->label.false_label<<endl;
+                    break;
+                }
+                case OP_BTEQ:
+                {
+                    cout<<"\tjl\t"<<child1->label.false_label<<endl;
+                    break;
+                }
+                case OP_EQ:
+                {
+                    cout<<"\tjne\t"<<child1->label.false_label<<endl;
+                    break;
+                }
+                case OP_NQ:
+                {
+                    cout<<"\tje\t"<<child1->label.false_label<<endl;
+                    break;
+                }
+                case OP_AND:
+                {
+                    break;
+                }
+                case OP_OR:
+                {
+                    break;
+                }
+                case OP_NOT:
+                {
+                    break;
+                }
+                default:{
+                    cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                    cout<<"\tje\t"<<child1->label.false_label<<endl;//相等跳转
+                    break;
+                }
+            }
+        }
+
+        child2 = node->child->sibling;
+        if(child2->optype != OP_NULL)
+            expr_gen_code(child2);
+        else{
+            if(child2->nodeType == NODE_CONST)
+                const_gen_code(child2, "eax");
+            else if(child2->nodeType == NODE_VAR)
+                var_gen_code(child2,"eax");
+            else{
+                cerr<<"Operands type wrong! at line: "<<child2->lineno<<endl;
+                exit(-1);
+            }
+        }
+
+        switch(child2->optype)
+        {
+            case OP_LT:
+            {
+                cout<<"\tjge\t"<<child2->label.false_label<<endl;
+                break;
+            }
+            case OP_BT:
+            {
+                cout<<"\tjle\t"<<child2->label.false_label<<endl;
+                break;
+            }
+            case OP_LTEQ:
+            {
+                cout<<"\tjg\t"<<child2->label.false_label<<endl;
+                break;
+            }
+            case OP_BTEQ:
+            {
+                cout<<"\tjl\t"<<child2->label.false_label<<endl;
+                break;
+            }
+            case OP_EQ:
+            {
+                cout<<"\tjne\t"<<child2->label.false_label<<endl;
+                break;
+            }
+            case OP_NQ:
+            {
+                cout<<"\tje\t"<<child2->label.false_label<<endl;
+                break;
+            }
+            case OP_AND:
+            {
+                break;
+            }
+            case OP_OR:
+            {
+                break;
+            }
+            case OP_NOT:
+            {
+                break;
+            }
+            default:{
+                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                cout<<"\tje\t"<<child2->label.false_label<<endl;//相等跳转
+                break;
+            }
+        }
+
+        //输出label
+        // if((child2->optype!=OP_AND)&&(child2->optype!=OP_OR))
+        //     cout<<node->label.true_label<<':'<<endl;
+
+    }
+    else{
+        if(node->child)
+            expr_gen_code(node->child);
+        if(node->sibling)
+            expr_gen_code(node->sibling); 
+    }
+
+}
+
+void TreeNode::var_gen_code(TreeNode * node, string reg){
+    if(node->isGlobal){//结点是一个全局变量，直接用标识符名
+        cout<<"\tmovl\t"<<node->var_name<<", %"<<reg<<endl;
+    }
+    else{
+        //局部变量处理，需要用到栈
+    }
+    return;
+}
+
+void TreeNode::const_gen_code(TreeNode * node, string reg){
+    switch(node->expType){
+        case EXP_INT:
+        {
+            cout<<"\tmovl\t$"<<node->int_val<<", %"<<reg<<endl;
+            break;
+        }
+        case EXP_CHAR:
+        {
+            cout<<"\tmovl\t$"<<int(node->ch_val)<<", %"<<reg<<endl;
+            break;
+        }
+        case EXP_STRING:
+        {
+            cout<<"\tmovl\t$"<<"STR"<<node->str_id<<", %"<<reg<<endl;
+            break;
+        }
+        default:
+        {
+            cerr<<"Operands type wrong! at line: "<<node->lineno<<endl;
+            exit(-1);
+        }
+    }
+}
+
+void TreeNode::inst2string(OperatorType op){
+    //根据不同的操作符，输出不同的汇编指令
+    switch(op){
+        case OP_ADD:
+        {
+            cout<<"\taddl\t%ecx, %eax"<<endl;
+            break;
+        }
+        case OP_SUB:
+        {
+            cout<<"\tsubl\t%ecx, %eax"<<endl;
+            break;
+        }
+        case OP_MUL:
+        {
+            cout<<"\timull\t%ecx, %eax"<<endl;
+            break;
+        }
+        case OP_DIV:
+        {
+            cout<<"\tcltd"<<endl;
+            cout<<"\tidivl\t%ecx"<<endl;
+            break;
+        }
+        case OP_MOD:
+        {
+            cout<<"\tcltd"<<endl;
+            cout<<"\tidivl\t%ecx"<<endl;
+            cout<<"\tmovl\t%edx, %eax"<<endl;
+            break;
+        }
+        case OP_NEG:
+        {
+            cout<<"\tnegl\t%eax"<<endl;
+            break;
+        }
+        case OP_ASSG:
+        {
+            cout<<"\tmovl\t%ecx, %eax"<<endl;
+            break;
+        }
+        case OP_ADD_ASSG:
+        {
+            cout<<"\taddl\t%ecx, %eax"<<endl;
+            break;
+        }
+        case OP_SUB_ASSG:
+        {
+            cout<<"\tsubl\t%ecx, %eax"<<endl;
+            break;
+        }
+        default:
+        {
+            if(op==OP_LT||op==OP_BT||op==OP_LTEQ||op==OP_BTEQ||op==OP_EQ||op==OP_NQ)
+                cout<<"\tcmpl\t%ecx, %eax"<<endl;//eax-ecx
+            break;
         }
     }
 }

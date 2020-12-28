@@ -5,6 +5,8 @@
 #include "type.h"
 extern long int current_id;
 extern bool is_use_stack;
+extern map<string, int> stringTable;
+
 enum NodeType
 {
     NODE_EMPTY,//空节点，对应没有内容的节点
@@ -32,27 +34,30 @@ enum OperatorType
     OP_NULL,//无符号
     OP_OPT,  // 正号
     OP_NEG,  // 负号
-    OP_NOT, // 取反
-    OP_INC, //++
-    OP_DEC,// --
 
     OP_ADD, //加号
     OP_SUB, //减号
     OP_MUL, //乘法
     OP_DIV, //除法
     OP_MOD, //取模
-    OP_OR, // ||
-    OP_AND,// &&
+
     OP_LT,// <
     OP_BT,// >
     OP_LTEQ,// <=
     OP_BTEQ,// >=
     OP_EQ,  // ==
     OP_NQ, // !=
+
     OP_ASSG,// 赋值号 =
- 
     OP_ADD_ASSG, // +=
     OP_SUB_ASSG,  // -=
+
+    OP_OR, // ||
+    OP_AND,// &&
+    OP_NOT, // 取反
+
+    OP_INC, //++
+    OP_DEC,// --
 
     OP_FUNC,//函数调用
 };
@@ -86,6 +91,7 @@ enum ExpType {//在类型检查中使用的类型
 }
 ;
 
+
 struct Label {//标签类型
     //布尔表达式专有
 	string true_label;
@@ -94,6 +100,9 @@ struct Label {//标签类型
 	string begin_label;
 	string next_label;
 };
+
+
+
 
 struct TreeNode {
 public:
@@ -116,6 +125,7 @@ public:
 
     void genNodeId();
 
+
 public:
     OperatorType optype;  // 如果是表达式
     Type* type;  // 变量、类型、表达式结点，有类型。
@@ -129,6 +139,9 @@ public:
 
     bool isConst;//如果是表达式节点，标记它是不是常量类型
     bool isdecl;//标记一个标识符，说明它是要被定义的变量名
+    bool isGlobal;//标记一个标识符是不是全局作用域的
+
+    int str_id;//如果结点为string常量结点，那么这个数组标记它对应的字符串在数据段的编号
 
 public://类型检查
     void check(TreeNode*);
@@ -147,18 +160,27 @@ public://代码生成
     void gen_code(TreeNode*);
     static TreeNode* nowFunc;//在遍历语法树的过程中，处于哪一个函数结点中
     bool isUseStack;//给函数结点的标记，说明这个函数有没有使用栈
+    bool exprResult;//表达式结点的代表的式子有没有完成输出代码
+
 private:
     void gen_header();//生成头部信息
     void recursive_gen_code(TreeNode *);//递归生成代码
     void gen_decl(TreeNode *);//给全局变量和字符串分配空间、
     void gen_decl_var(TreeNode *, bool isdeclConst);//isdeclConst：是否是给常量分配空间
-    static int str_num;
+    void stmt_gen_code(TreeNode *);
+    void expr_gen_code(TreeNode *);
+    void var_gen_code(TreeNode * , string);//专门给变量准备的输出函数
+    void const_gen_code(TreeNode * , string);//专门给字面常量准备的输出函数
+    void inst2string(OperatorType);//为不同的操作符，输出不同的汇编指令
+
 
 
 public:
     static string nodeType2String (NodeType type);
     static string opType2String (OperatorType type);
     static string sType2String (StmtType type);
+
+    static TreeNode* mainNode;
 
 public:
     TreeNode(int lineno, NodeType type);

@@ -7,11 +7,6 @@
 	.size	a, 4
 a:
 	.long	1
-	.globl	t
-	.type	t, @object
-	.size	t, 1
-t:
-	.byte	0
 
 	.rodata
 	.globl	s
@@ -19,21 +14,28 @@ t:
 	.size	s, 1
 s:
 	.byte	97
-STR0:
-	.string "s:%d"
 	.text
 	.globl main
 	.type  main, @function
 main:
-	leal	4(%esp), %ecx
-	andl	$-16, %esp
-	pushl	-4(%ecx)
 	pushl	%ebp
 	movl	%esp, %ebp
-	pushl	%ecx
-	subl	$4, %esp
-	movl	-4(%ebp), %ecx
-	leave
-	leal	-4(%ecx), %esp
+	movl	$1, %eax
+	movl	a, %ecx
+	addl	%ecx, %eax
+	cmpl	$0, %eax
+	jne	@0
+	movl	s, %eax
+	cmpl	$0, %eax
+	je	@1
+	movl	$1, %eax
+	movl	$2, %ecx
+	addl	%ecx, %eax
+	cmpl	$0, %eax
+	je	@1
+	movl	a, %eax
+	cmpl	$0, %eax
+	jne	@1
+	popl	%ebp
 	ret
 	.section  .note.GNU-stack,"",@progbits

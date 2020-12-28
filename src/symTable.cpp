@@ -53,3 +53,7 @@ string symTable::getType(int id){
 bool symTable::isConstVar(int id){
 	return table.find(id)->second->isConst;
 }
+
+bool symTable::isGlobal(int id){
+	return ((table.find(id)->second->Socpe)=="global");
+}
