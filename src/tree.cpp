@@ -112,24 +112,28 @@ void TreeNode::printSpecialInfo() {
             break;
         case NODE_STMT:
             cout<<setw(16)<<"stmt: "<<sType2String(this->stype);
-            if(this->stype == STMT_ASSG){
-                cout<<"   assg_type: "<<opType2String(this->optype);
-            }
-            else if(this->stype == STMT_IOFUNC){
-                cout<<"   name: "<<this->var_name;
+            // if(this->stype == STMT_ASSG){
+            //     cout<<"   assg_type: "<<opType2String(this->optype);
+            // }
+            if(this->stype == STMT_IOFUNC){
+                cout<<"   name: "<<this->var_name<<"  paramNum: "<<this->paraNum;
             }
             break;
         case NODE_TYPE:
             cout<<setw(16)<<" type: "<<this->type->getTypeInfo();
             break;
         case NODE_FUNC:
+        {
             cout<<setw(16)<<"func_name: "<<this->var_name<<setw(16)<<"return_type: "<<this->type->getTypeInfo();
-            cout<<setw(16)<<"use_stack: ";
-            if(this->isUseStack)
-                cout<<"True";
-            else
-                cout<<"False";
+            TreeNode* temp = this->child->sibling->sibling;
+            cout<<"  paraNum: "<<temp->paraNum;
+            // cout<<setw(16)<<"use_stack: ";
+            // if(this->isUseStack)
+            //     cout<<"True";
+            // else
+            //     cout<<"False";
             break;
+        }
         case NODE_LVAL:
             cout<<setw(16)<<"type: "<<this->type->getTypeInfo();
             break;
@@ -146,8 +150,8 @@ string TreeNode::sType2String(StmtType type) {
         return "skip";
     case STMT_DECL:
         return "decl";
-    case STMT_ASSG:
-        return "assgin";
+    // case STMT_ASSG:
+    //     return "assgin";
     case STMT_EXPR:
         return "expression";
     case STMT_BLOK:
@@ -441,25 +445,10 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
         {
             switch (node->stype)
             {
-                case STMT_ASSG:
-                {
-                    TreeNode* child1 = node->child,*child2 = node->child->sibling;
-                    if(child1->expType==EXP_NOTYPE||child2->expType==EXP_NOTYPE){
-                        cerr<< "undefine type at line: "<<node->lineno << endl;     
-                    }
-                    else if(child1->isConst){
-                        cerr<< "Const var cant be redefined! line: "<<node->lineno << endl;  
-                    }
-                    else if(child1->expType!=child2->expType){
-                        cerr<< "Declaration statement type match fault! line: "<<node->lineno << endl;  
-                    }                   
-                    break;
-                }
                 case STMT_IF:
                 {
                     if(node->child->expType!=EXP_BOOL){
                         cerr<< "If statement don't get a bool cond, but we fix it. line: "<<node->lineno << endl;  
-                        node->child->expType = EXP_BOOL;
                     }
                     break;
                 }
@@ -467,7 +456,6 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                 {
                     if(node->child->expType!=EXP_BOOL){
                         cerr<< "If statement don't get a bool cond, but we fix it. line: "<<node->lineno << endl;  
-                        node->child->expType = EXP_BOOL;
                     }
                     break;
                 }   
@@ -475,7 +463,6 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                 {
                     if(node->child->expType!=EXP_BOOL){
                         cerr<< "If statement don't get a bool cond, but we fix it. line: "<<node->lineno << endl;  
-                        node->child->expType = EXP_BOOL;
                     }
                     break;
                 }   
@@ -483,7 +470,6 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                 {
                     if(node->child->sibling->expType!=EXP_BOOL&&node->child->sibling->nodeType!=NODE_EMPTY){
                         cerr<< "For statement don't get a bool or null cond, but we fix it. line: "<<node->lineno << endl;  
-                        node->child->sibling->expType = EXP_BOOL;
                     }
                     break;
                 }
@@ -493,6 +479,15 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                         cerr<< "decl in for type match fault! line: "<<node->lineno << endl;  
                     }
                     break;
+                }
+                case STMT_IOFUNC:
+                {
+                    TreeNode* para = node->child->sibling;
+                    if(para->nodeType == NODE_EMPTY)
+                    {
+                        cerr<<"para of IOfunc cant be empty! at line: "<<node->lineno<<endl;
+                        exit(-1);
+                    }
                 }
                 default:
                     break;
@@ -601,6 +596,8 @@ void TreeNode::recursive_get_label(TreeNode* node){
                     if(node->label.false_label=="")
                         node->label.false_label = new_label();
                     
+                    child1->label.true_label = new_label();
+                    
                     child1->label.false_label= child2->label.false_label = node->label.false_label;
                     child2->label.true_label = node->label.true_label;
                     break;
@@ -612,6 +609,9 @@ void TreeNode::recursive_get_label(TreeNode* node){
                     if(node->label.false_label=="")
                         node->label.false_label = new_label();
                     TreeNode* child1 = node->child,*child2 = node->child->sibling;
+
+                    child1->label.false_label = new_label();
+
                     child1->label.true_label = child2->label.true_label = node->label.true_label;
                     child2->label.false_label = node->label.false_label;
                     break;
@@ -648,6 +648,7 @@ void TreeNode::gen_code(TreeNode* node){
     gen_decl(node);
     //由于还没有实现函数，所以手动输出main函数的声明
     string func_name = "main";
+    //默认nowFunc指针指向main函数结点
     cout<<"\t.text"<<endl;
 	cout<<"\t.globl "<<func_name<<endl;
 	cout<<"\t.type  "<<func_name<<", @function"<<endl;
@@ -662,17 +663,11 @@ void TreeNode::gen_code(TreeNode* node){
         cout<<"\tpushl\t%ecx"<<endl;
         cout<<"\tsubl\t$4, %esp"<<endl;
         recursive_gen_code(mainNode);
-        cout<<"\tmovl\t-4(%ebp), %ecx"<<endl;
-        cout<<"\tleave"<<endl;
-        cout<<"\tleal\t-4(%ecx), %esp"<<endl;
-        cout<<"\tret"<<endl;
     }
     else{
         cout<<"\tpushl\t%ebp"<<endl;
         cout<<"\tmovl\t%esp, %ebp"<<endl;
         recursive_gen_code(mainNode);
-        cout<<"\tpopl\t%ebp"<<endl;
-        cout<<"\tret"<<endl;
     }
     //如果函数实现了，上面的几行可以删除
 
@@ -688,7 +683,7 @@ void TreeNode::gen_decl(TreeNode * node){//只关心全局变量和常量
     cout<<"\t.data"<<endl;//全局变量存在data段里
     gen_decl_var(node, false);//
     cout<<endl;
-    cout<<"\t.rodata"<<endl;//全局常量存在rodata里
+    cout<<"\t.section\t.rodata"<<endl;//全局常量存在rodata里
     gen_decl_var(node, true);
     //把string存在rodata段里
     for(auto iter=stringTable.begin();iter!=stringTable.end();iter++){
@@ -805,18 +800,78 @@ void TreeNode::recursive_gen_code(TreeNode * node){
 
 void TreeNode::stmt_gen_code(TreeNode * node){
     switch(node->stype){
+        case STMT_IOFUNC://实参一定是表达式，不可能为空
+        {   
+            TreeNode* paras = node->child->sibling;
+            TreeNode* str = node->child;
+            int paranum = node->paraNum+1;//加上字符串
+            int space = ((paranum/4)+1)*16;
+            int empty = space - paranum*4;
+            cout<<"\tsubl\t$"<<empty<<", %esp"<<endl;
+            TreeNode* temp;
+            for(int i=paranum-1;i>0;i--){
+                temp =  paras->child;
+                for(int j =1;j<i;j++)
+                {
+                    temp = temp->sibling;
+                }
+                if(node->var_name == "printf")
+                {
+                    expr_gen_code(temp);
+                    cout<<"\tpushl\t%eax"<<endl;
+                }
+                else
+                {
+                    cout<<"\tpushl\t$"<<gen_varname(temp)<<endl;
+                }
+            }
+            cout<<"\tpushl\t$"<<"STR"<<str->str_id<<endl;
+            cout<<"\tcall\t"<<node->var_name<<endl;
+            cout<<"\taddl\t$"<<space<<", %esp"<<endl;
+            return;
+        }
+        case STMT_RETURN:
+        {
+            TreeNode* child1 = node->child;
+            expr_gen_code(child1);
+            if(nowFunc->isUseStack)
+            {
+                cout<<"\tmovl\t-4(%ebp), %ecx"<<endl;
+                cout<<"\tleave"<<endl;
+                cout<<"\tleal\t-4(%ecx), %esp"<<endl;
+                cout<<"\tret"<<endl;
+            }
+            else{
+                cout<<"\tpopl\t%ebp"<<endl;
+                cout<<"\tret"<<endl;
+            }
+            return;
+        }
+        case STMT_IF:
+        {
+            TreeNode *cond = node->child, *code = node->child->sibling;
+            expr_gen_code(cond);
+            if(cond->expType!=EXP_BOOL){
+                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                cout<<"\tje\t"<<cond->label.false_label<<endl;//不相等跳转
+            }
+            cout<<cond->label.true_label<<':'<<endl;
+            recursive_gen_code(code);
+            return;
+        }
         default:
         {
             if(node->child)
                 recursive_gen_code(node->child);
-            if(node->sibling)
-                recursive_gen_code(node->sibling);
+            // if(node->sibling)
+            //     recursive_gen_code(node->sibling);
+            return;
         }    
     }
 }
 void TreeNode::expr_gen_code(TreeNode * node){
     OperatorType op = node->optype;
-    if(op==OP_ADD||op==OP_SUB||op==OP_MUL||op==OP_DIV||op==OP_MOD){
+    if(op==OP_ADD||op==OP_SUB||op==OP_MUL||op==OP_DIV||op==OP_MOD||op==OP_EQ||op==OP_NQ||op==OP_LT||op==OP_BT||op==OP_LTEQ||op==OP_BTEQ){
         TreeNode *child1 = node->child, *child2 = node->child->sibling;
         //任何情况下，一定要保证左孩子结点的结果保存在eax，而右孩子的结点结果保存在ecx
         if(child1->optype != OP_NULL)
@@ -839,7 +894,6 @@ void TreeNode::expr_gen_code(TreeNode * node){
             expr_gen_code(child2);
             cout<<"\tmovl\t%eax, %ecx"<<endl;
             cout<<"\tpopl\t%eax"<<endl;
-            // cout<<"\taddl\t%edx, %eax"<<endl;
         }
         else{//右子树为叶节点
             if(child2->nodeType == NODE_CONST)
@@ -850,7 +904,6 @@ void TreeNode::expr_gen_code(TreeNode * node){
                 cerr<<"Operands type wrong! at line: "<<child2->lineno<<endl;
                 exit(-1);
             }
-            // cout<<"\taddl\t%edx, %eax"<<endl;
         }
         inst2string(op);//根据不同的操作符，输出不同的汇编指令
         return;
@@ -942,6 +995,9 @@ void TreeNode::expr_gen_code(TreeNode * node){
 
                 return;
             }
+            else{//op==OP_OR
+                cout<<child1->label.false_label<<':'<<endl;
+            }
         }
         else /*if(op==OP_AND)*/
         {
@@ -994,6 +1050,7 @@ void TreeNode::expr_gen_code(TreeNode * node){
                     break;
                 }
             }
+            cout<<child1->label.true_label<<':'<<endl;
         }
 
         child2 = node->child->sibling;
@@ -1061,28 +1118,84 @@ void TreeNode::expr_gen_code(TreeNode * node){
             }
         }
 
-        //输出label
-        // if((child2->optype!=OP_AND)&&(child2->optype!=OP_OR))
-        //     cout<<node->label.true_label<<':'<<endl;
-
+    }
+    else if(op==OP_ASSG||op==OP_ADD_ASSG||op==OP_SUB_ASSG)
+    {
+        TreeNode* child1=node->child,*child2=node->child->sibling;
+        //child1一定是一个变量，child2一定是一个表达式
+        var_gen_code(child1,"eax");
+        if(child2->optype != OP_NULL)
+        {
+            cout<<"\tpushl\t%eax"<<endl;
+            expr_gen_code(child2);
+            cout<<"\tmovl\t%eax, %ecx"<<endl;
+            cout<<"\tpopl\t%eax"<<endl;
+        }
+        else{//右子树为叶节点
+            if(child2->nodeType == NODE_CONST)
+                const_gen_code(child2, "ecx");
+            else if(child2->nodeType == NODE_VAR)
+                var_gen_code(child2,"ecx");
+            else{
+                cerr<<"Operands type wrong! at line: "<<child2->lineno<<endl;
+                exit(-1);
+            }
+        }
+        if(op==OP_ASSG)
+        {
+            cout<<"\tmovl\t%ecx, "<<gen_varname(child1)<<endl;
+            cout<<"\tmovl\t%ecx, %eax"<<endl;
+        }
+        else if(op==OP_ADD_ASSG)
+        {
+            cout<<"\taddl\t%ecx, %eax"<<endl;
+            cout<<"\tmovl\t%eax, "<<gen_varname(child1)<<endl;
+        }
+        else
+        {
+            cout<<"\tsubl\t%ecx, %eax"<<endl;
+            cout<<"\tmovl\t%eax, "<<gen_varname(child1)<<endl;
+        }
+        return;
+    }
+    else if(op==OP_NULL){
+        if(node->nodeType == NODE_CONST)
+            const_gen_code(node, "eax");
+        else if(node->nodeType == NODE_VAR)
+            var_gen_code(node,"eax");
+        else{
+            cerr<<"Operands type wrong! at line: "<<node->lineno<<endl;
+            exit(-1);
+        }
     }
     else{
-        if(node->child)
-            expr_gen_code(node->child);
-        if(node->sibling)
-            expr_gen_code(node->sibling); 
+        // if(node->child)
+        //     expr_gen_code(node->child);
+        // if(node->sibling)
+        //     expr_gen_code(node->sibling); 
+        cerr<<"expr optype wrong at line: "<<node->lineno<<endl;
+        exit(-1);
     }
 
 }
 
 void TreeNode::var_gen_code(TreeNode * node, string reg){
-    if(node->isGlobal){//结点是一个全局变量，直接用标识符名
-        cout<<"\tmovl\t"<<node->var_name<<", %"<<reg<<endl;
-    }
-    else{
-        //局部变量处理，需要用到栈
-    }
+    cout<<"\tmovl\t"<<gen_varname(node)<<", %"<<reg<<endl;
     return;
+}
+
+string TreeNode::gen_varname(TreeNode * node)
+{
+    if(node->isGlobal)
+    {
+        return node->var_name;
+    }
+    else
+    {
+        //局部变量的处理
+        return "";
+    }
+    
 }
 
 void TreeNode::const_gen_code(TreeNode * node, string reg){
@@ -1146,21 +1259,6 @@ void TreeNode::inst2string(OperatorType op){
             cout<<"\tnegl\t%eax"<<endl;
             break;
         }
-        case OP_ASSG:
-        {
-            cout<<"\tmovl\t%ecx, %eax"<<endl;
-            break;
-        }
-        case OP_ADD_ASSG:
-        {
-            cout<<"\taddl\t%ecx, %eax"<<endl;
-            break;
-        }
-        case OP_SUB_ASSG:
-        {
-            cout<<"\tsubl\t%ecx, %eax"<<endl;
-            break;
-        }
         default:
         {
             if(op==OP_LT||op==OP_BT||op==OP_LTEQ||op==OP_BTEQ||op==OP_EQ||op==OP_NQ)
@@ -1168,4 +1266,115 @@ void TreeNode::inst2string(OperatorType op){
             break;
         }
     }
+}
+
+void TreeNode::howRelOpJmp(OperatorType op, bool true2jmp, string label)
+{
+    if(!true2jmp)//条件为假时跳转
+    {
+        switch(op)
+        {
+            case OP_LT:
+            {
+                cout<<"\tjge\t"<<label<<endl;
+                break;
+            }
+            case OP_BT:
+            {
+                cout<<"\tjle\t"<<label<<endl;
+                break;
+            }
+            case OP_LTEQ:
+            {
+                cout<<"\tjg\t"<<label<<endl;
+                break;
+            }
+            case OP_BTEQ:
+            {
+                cout<<"\tjl\t"<<label<<endl;
+                break;
+            }
+            case OP_EQ:
+            {
+                cout<<"\tjne\t"<<label<<endl;
+                break;
+            }
+            case OP_NQ:
+            {
+                cout<<"\tje\t"<<label<<endl;
+                break;
+            }
+            case OP_AND:
+            {
+                break;
+            }
+            case OP_OR:
+            {
+                break;
+            }
+            case OP_NOT:
+            {
+                break;
+            }
+            default:{
+                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                cout<<"\tje\t"<<label<<endl;//相等跳转
+                break;
+            }
+        }
+    }
+    else//条件为真时跳转
+    {
+        switch(op){
+            case OP_LT:
+            {
+                cout<<"\tjl\t"<<label<<endl;
+                break;
+            }
+            case OP_BT:
+            {
+                cout<<"\tjg\t"<<label<<endl;
+                break;
+            }
+            case OP_LTEQ:
+            {
+                cout<<"\tjle\t"<<label<<endl;
+                break;  
+            }
+            case OP_BTEQ:
+            {
+                cout<<"\tjge\t"<<label<<endl;
+                break;
+            }
+            case OP_EQ:
+            {
+                cout<<"\tje\t"<<label<<endl;
+                break;
+            }
+            case OP_NQ:
+            {
+                cout<<"\tjne\t"<<label<<endl;
+                break;
+            }
+            case OP_AND:
+            {
+                break;
+            }
+            case OP_OR:
+            {
+                break;
+            }
+            case OP_NOT:
+            {
+                break;
+            }
+            default:
+            {
+                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                cout<<"\tjne\t"<<label<<endl;//不相等跳转
+                break;
+            }
+        }
+    }
+    
 }

@@ -17,6 +17,17 @@ void createSymbolTable(TreeNode* node, socpetable* table){
         return ;
     switch (node->nodeType)
     {
+        case NODE_FUNCPARAMS:
+        {          
+            TreeNode* temp = node->child;
+            int num = 0;
+            while(temp!=nullptr){
+                num++;
+                temp = temp->sibling;
+            }
+            node->paraNum = num;
+            break;
+        }
         case NODE_FUNCPARAM:
             varType = node->child->type->getTypeInfo();
             break;
@@ -107,8 +118,18 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                     isJustOneBlock = false;
                     goto ergodic;       
                 case STMT_IOFUNC:
+                {
                     TreeNode::nowFunc->isUseStack = true;
+                    TreeNode* temp = node->child->sibling->child;//实参表
+                    int num = 0;
+                    while(temp!=nullptr){
+                        num++;
+                        temp = temp->sibling;
+                    }
+                    node->paraNum = num;
                     break;
+                }
+                    
                 default:
                     break;
             }

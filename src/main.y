@@ -116,30 +116,30 @@ statement
 : SEMICOLON  {$$ = new TreeNode(lineno, NODE_STMT); $$->stype = STMT_SKIP;}
 | declaration SEMICOLON {$$ = $1;}
 | constDeclaration SEMICOLON {$$ = $1;}
-| LVal LOP_ASSIGN expr SEMICOLON {
-    TreeNode* node = new TreeNode($1->lineno, NODE_STMT);
-    node->stype = STMT_ASSG;
-    node->optype = OP_ASSG;
-    node->addChild($1);
-    node->addChild($3);
-    $$ = node;
-}
-| LVal ADD_ASSIGN expr SEMICOLON {
-    TreeNode* node = new TreeNode($1->lineno, NODE_STMT);
-    node->stype = STMT_ASSG;
-    node->optype = OP_ADD_ASSG;
-    node->addChild($1);
-    node->addChild($3);
-    $$ = node;
-}
-| LVal SUB_ASSIGN expr SEMICOLON {
-    TreeNode* node = new TreeNode($1->lineno, NODE_STMT);
-    node->stype = STMT_ASSG;
-    node->optype = OP_SUB_ASSG;
-    node->addChild($1);
-    node->addChild($3);
-    $$ = node;
-}
+// | LVal LOP_ASSIGN expr SEMICOLON {
+//     TreeNode* node = new TreeNode($1->lineno, NODE_STMT);
+//     node->stype = STMT_ASSG;
+//     node->optype = OP_ASSG;
+//     node->addChild($1);
+//     node->addChild($3);
+//     $$ = node;
+// }
+// | LVal ADD_ASSIGN expr SEMICOLON {
+//     TreeNode* node = new TreeNode($1->lineno, NODE_STMT);
+//     node->stype = STMT_ASSG;
+//     node->optype = OP_ADD_ASSG;
+//     node->addChild($1);
+//     node->addChild($3);
+//     $$ = node;
+// }
+// | LVal SUB_ASSIGN expr SEMICOLON {
+//     TreeNode* node = new TreeNode($1->lineno, NODE_STMT);
+//     node->stype = STMT_ASSG;
+//     node->optype = OP_SUB_ASSG;
+//     node->addChild($1);
+//     node->addChild($3);
+//     $$ = node;
+// }
 | expr SEMICOLON {
     $$ = new TreeNode($1->lineno, NODE_STMT); 
     $$->stype = STMT_EXPR;
@@ -214,7 +214,7 @@ IOFunc
     $$->stype = STMT_IOFUNC;
     $$->var_name = "scanf";
     $$->addChild($3);
-    $$->addChild($6);
+    $$->addChild($5);
     is_use_stack = true;
 }
 | PRINTF LBRACKET STRING COMMA funcRParams RBRACKET {

@@ -6,36 +6,15 @@
 	.type	a, @object
 	.size	a, 4
 a:
-	.long	1
+	.long	0
 
-	.rodata
-	.globl	s
-	.type	s, @object
-	.size	s, 1
-s:
-	.byte	97
+	.section	.rodata
 	.text
 	.globl main
 	.type  main, @function
 main:
 	pushl	%ebp
 	movl	%esp, %ebp
-	movl	$1, %eax
-	movl	a, %ecx
-	addl	%ecx, %eax
-	cmpl	$0, %eax
-	jne	@0
-	movl	s, %eax
-	cmpl	$0, %eax
-	je	@1
-	movl	$1, %eax
-	movl	$2, %ecx
-	addl	%ecx, %eax
-	cmpl	$0, %eax
-	je	@1
 	movl	a, %eax
-	cmpl	$0, %eax
-	jne	@1
-	popl	%ebp
-	ret
-	.section  .note.GNU-stack,"",@progbits
+	movl	$0, %ecx
+	cmpl	%ecx, %eax

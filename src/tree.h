@@ -66,18 +66,23 @@ enum StmtType {
     STMT_SKIP,
     STMT_DECL,
     STMT_DECL_CONST,//常量声明
-    STMT_ASSG,
+    // STMT_ASSG,
     STMT_EXPR,
     STMT_BLOK,
+    //老大难
     STMT_IF,
     STMT_IFELSE,
     STMT_WHILE,
+    STMT_FOR,
+
+    STMT_FOR_DECL,
+
     STMT_BREAK,
     STMT_CONTI,
     STMT_RETURN,
-    STMT_FOR,
+
     STMT_IOFUNC,
-    STMT_FOR_DECL,
+
 }
 ;
 
@@ -142,7 +147,7 @@ public:
     bool isGlobal;//标记一个标识符是不是全局作用域的
 
     int str_id;//如果结点为string常量结点，那么这个数组标记它对应的字符串在数据段的编号
-
+    int paraNum;//如果结点为函数实参类型，那么它应该保存实参的个数，在生成符号表时填上
 public://类型检查
     void check(TreeNode*);
 private:
@@ -172,7 +177,8 @@ private:
     void var_gen_code(TreeNode * , string);//专门给变量准备的输出函数
     void const_gen_code(TreeNode * , string);//专门给字面常量准备的输出函数
     void inst2string(OperatorType);//为不同的操作符，输出不同的汇编指令
-
+    string gen_varname(TreeNode*);
+    void howRelOpJmp(OperatorType op,bool ture2jmp, string label);
 
 
 public:

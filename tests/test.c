@@ -1,7 +1,8 @@
-int a = 1;
-const char s = 'a';
+int a=0;
+int main(){
 
-void main(){
-    (1+a)||s&&(1+2)&&!a;
-    return;
+    if(a>0){
+        a-=20;
+    }
+    return 0;
 }

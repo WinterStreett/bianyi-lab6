@@ -5,6 +5,7 @@
         "ostream": "cpp",
         "iomanip": "cpp",
         "iostream": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "string": "cpp"
     }
 }
