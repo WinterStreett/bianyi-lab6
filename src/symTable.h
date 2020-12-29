@@ -17,7 +17,10 @@ struct symInfo {
 	string Type;
 	string Socpe;
 	bool isConst;
+	bool isDef;
+	int scopeID;
 	symInfo(string name, string type, string scope,bool isconst);
+	// symInfo(string name, string type, string scope,bool isconst,bool isdef,int scopeid);
 };
 
 

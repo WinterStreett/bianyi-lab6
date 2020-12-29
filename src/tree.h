@@ -145,6 +145,7 @@ public:
     bool isConst;//如果是表达式节点，标记它是不是常量类型
     bool isdecl;//标记一个标识符，说明它是要被定义的变量名
     bool isGlobal;//标记一个标识符是不是全局作用域的
+    bool isMyLabelWasCout;
 
     int str_id;//如果结点为string常量结点，那么这个数组标记它对应的字符串在数据段的编号
     int paraNum;//如果结点为函数实参类型，那么它应该保存实参的个数，在生成符号表时填上

@@ -1,8 +1,15 @@
-int a=0;
-int main(){
+// int func1(int a, int b)
+// {
+//     int c = 1;
+//     b = 2;
+//     return;
+// }
 
-    if(a>0){
-        a-=20;
-    }
+int main()
+{
+    int a = 1;
+    int b = 2;
+    int c =2;
+    a=b+=c;
     return 0;
 }

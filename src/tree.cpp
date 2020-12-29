@@ -38,6 +38,7 @@ TreeNode::TreeNode(int lineno, NodeType type) {
     this->isUseStack = false;
     this->isGlobal = false;
     this->exprResult = false;
+    this->isMyLabelWasCout = false;
 }
 
 void TreeNode::genNodeId() {
@@ -411,8 +412,9 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
                     cerr<< "First operand cant be const variable! line:"<<node->lineno<<" "<< opType2String(op) << endl;
                 }
                 else if(child1!=child2){
-                    if(child2==EXP_STRING){
-                        cerr<< "Operands cant be string line: "<<node->lineno<<" "<< opType2String(op) << endl;
+                    if(child2==EXP_STRING||child2==EXP_BOOL){
+                        cerr<< "Operands type match fault！at line: "<<node->lineno<<" "<< opType2String(op) << endl;
+                        exit(-1);
                     }
                     else{
                         cerr<< "type transform at line: "<<node->lineno<<" "<< opType2String(op) << endl;
@@ -503,7 +505,7 @@ ExpType TreeNode::type_check(TreeNode* node){//鲁棒性！！！
 string TreeNode::new_label(){
     char tmp[20];
 
-	sprintf(tmp, "@%d", TreeNode::label_seq);
+	sprintf(tmp, ".L%d", TreeNode::label_seq);
 	TreeNode::label_seq++;
 	return tmp;
 }
@@ -798,8 +800,25 @@ void TreeNode::recursive_gen_code(TreeNode * node){
     }
 }
 
-void TreeNode::stmt_gen_code(TreeNode * node){
+void TreeNode::stmt_gen_code(TreeNode * node){  
+    //每个语句在开始时，输出它的begin标签
+    //那么每个语句就不需要输出自己的end标签
+    // if(node->label.begin_label!="")
+    //     cout<<node->label.begin_label<<':'<<endl;
+
     switch(node->stype){
+        case STMT_EXPR:
+        {
+            TreeNode * child = node->child;
+            expr_gen_code(child);
+
+            if(child->optype==OP_OR||child->optype==OP_AND||child->optype==OP_NOT)
+            {
+                cout<<child->label.false_label<<':'<<endl;
+                cout<<child->label.true_label<<':'<<endl;
+            }
+            return;
+        }
         case STMT_IOFUNC://实参一定是表达式，不可能为空
         {   
             TreeNode* paras = node->child->sibling;
@@ -850,15 +869,79 @@ void TreeNode::stmt_gen_code(TreeNode * node){
         case STMT_IF:
         {
             TreeNode *cond = node->child, *code = node->child->sibling;
+            OperatorType op = cond->optype;
             expr_gen_code(cond);
-            if(cond->expType!=EXP_BOOL){
+            if(op==OP_EQ||op==OP_NQ||op==OP_LT||op==OP_BT||op==OP_LTEQ||op==OP_BTEQ)
+            {
+                howRelOpJmp(op,false,cond->label.false_label);
+            }
+            else if(cond->expType!=EXP_BOOL)
+            {
                 cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
-                cout<<"\tje\t"<<cond->label.false_label<<endl;//不相等跳转
+                cout<<"\tje\t"<<cond->label.false_label<<endl;//相等跳转
             }
             cout<<cond->label.true_label<<':'<<endl;
-            recursive_gen_code(code);
+            stmt_gen_code(code);
+            cout<<node->label.next_label<<':'<<endl;
+            node->sibling->isMyLabelWasCout = true;
             return;
         }
+        case STMT_IFELSE:
+        {
+            TreeNode *cond = node->child, *code1 = node->child->sibling, *code2 = node->child->sibling->sibling;
+            OperatorType op = cond->optype;
+            expr_gen_code(cond);
+            if(op==OP_EQ||op==OP_NQ||op==OP_LT||op==OP_BT||op==OP_LTEQ||op==OP_BTEQ)
+            {
+                howRelOpJmp(op,false,cond->label.false_label);
+            }
+            else if(cond->expType!=EXP_BOOL)
+            {
+                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                cout<<"\tje\t"<<cond->label.false_label<<endl;//相等跳转
+            }
+            cout<<cond->label.true_label<<':'<<endl;
+            stmt_gen_code(code1);
+            cout<<"\tjmp\t"<<node->label.next_label<<endl;
+            cout<<cond->label.false_label<<':'<<endl;
+            stmt_gen_code(code2);
+            cout<<node->label.next_label<<':'<<endl;
+            node->sibling->isMyLabelWasCout = true;
+            return;
+        }
+        case STMT_WHILE:
+        {
+            TreeNode *cond = node->child, *code = node->child->sibling;
+            OperatorType op = cond->optype;
+            if(!node->isMyLabelWasCout)
+                cout<<node->label.begin_label<<':'<<endl;
+            expr_gen_code(cond);
+            if(op==OP_EQ||op==OP_NQ||op==OP_LT||op==OP_BT||op==OP_LTEQ||op==OP_BTEQ)
+            {
+                howRelOpJmp(op,false,cond->label.false_label);
+            }
+            else if(cond->expType!=EXP_BOOL)
+            {
+                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
+                cout<<"\tje\t"<<cond->label.false_label<<endl;//相等跳转
+            }
+            cout<<cond->label.true_label<<':'<<endl;
+            stmt_gen_code(code);
+            cout<<"\tjmp\t"<<node->label.begin_label<<endl;
+            cout<<node->label.next_label<<':'<<endl;
+            node->sibling->isMyLabelWasCout = true;
+            return;
+        }
+        // case STMT_FOR:
+        // {
+        //     TreeNode *exp1, *exp2, *exp3, *code;
+        //     exp1=node->child;
+        //     exp2=exp1->sibling;
+        //     exp3=exp2->sibling;
+        //     code=exp3->sibling;
+        //     //必须实现局部变量的分配了
+        //     return;
+        // }
         default:
         {
             if(node->child)
@@ -941,116 +1024,21 @@ void TreeNode::expr_gen_code(TreeNode * node){
         }
 
         if(op==OP_OR||op==OP_NOT){
-            switch(child1->optype){
-                case OP_LT:
-                {
-                    cout<<"\tjl\t"<<child1->label.true_label<<endl;
-                    break;
-                }
-                case OP_BT:
-                {
-                    cout<<"\tjg\t"<<child1->label.true_label<<endl;
-                    break;
-                }
-                case OP_LTEQ:
-                {
-                    cout<<"\tjle\t"<<child1->label.true_label<<endl;
-                    break;  
-                }
-                case OP_BTEQ:
-                {
-                    cout<<"\tjge\t"<<child1->label.true_label<<endl;
-                    break;
-                }
-                case OP_EQ:
-                {
-                    cout<<"\tje\t"<<child1->label.true_label<<endl;
-                    break;
-                }
-                case OP_NQ:
-                {
-                    cout<<"\tjne\t"<<child1->label.true_label<<endl;
-                    break;
-                }
-                case OP_AND:
-                {
-                    break;
-                }
-                case OP_OR:
-                {
-                    break;
-                }
-                case OP_NOT:
-                {
-                    break;
-                }
-                default:
-                {
-                    cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
-                    cout<<"\tjne\t"<<child1->label.true_label<<endl;//不相等跳转
-                    break;
-                }
-            }
+            howRelOpJmp(child1->optype,true,child1->label.true_label);
             if(op==OP_NOT){
 
                 return;
             }
             else{//op==OP_OR
+            if(child1->expType==EXP_BOOL)
                 cout<<child1->label.false_label<<':'<<endl;
             }
         }
         else /*if(op==OP_AND)*/
         {
-            switch(child1->optype){
-                case OP_LT:
-                {
-                    cout<<"\tjge\t"<<child1->label.false_label<<endl;
-                    break;
-                }
-                case OP_BT:
-                {
-                    cout<<"\tjle\t"<<child1->label.false_label<<endl;
-                    break;
-                }
-                case OP_LTEQ:
-                {
-                    cout<<"\tjg\t"<<child1->label.false_label<<endl;
-                    break;
-                }
-                case OP_BTEQ:
-                {
-                    cout<<"\tjl\t"<<child1->label.false_label<<endl;
-                    break;
-                }
-                case OP_EQ:
-                {
-                    cout<<"\tjne\t"<<child1->label.false_label<<endl;
-                    break;
-                }
-                case OP_NQ:
-                {
-                    cout<<"\tje\t"<<child1->label.false_label<<endl;
-                    break;
-                }
-                case OP_AND:
-                {
-                    break;
-                }
-                case OP_OR:
-                {
-                    break;
-                }
-                case OP_NOT:
-                {
-                    break;
-                }
-                default:{
-                    cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
-                    cout<<"\tje\t"<<child1->label.false_label<<endl;//相等跳转
-                    break;
-                }
-            }
-            cout<<child1->label.true_label<<':'<<endl;
+            howRelOpJmp(child1->optype,false,child1->label.false_label);
+            if(child1->expType==EXP_BOOL)
+                cout<<child1->label.true_label<<':'<<endl;
         }
 
         child2 = node->child->sibling;
@@ -1066,57 +1054,7 @@ void TreeNode::expr_gen_code(TreeNode * node){
                 exit(-1);
             }
         }
-
-        switch(child2->optype)
-        {
-            case OP_LT:
-            {
-                cout<<"\tjge\t"<<child2->label.false_label<<endl;
-                break;
-            }
-            case OP_BT:
-            {
-                cout<<"\tjle\t"<<child2->label.false_label<<endl;
-                break;
-            }
-            case OP_LTEQ:
-            {
-                cout<<"\tjg\t"<<child2->label.false_label<<endl;
-                break;
-            }
-            case OP_BTEQ:
-            {
-                cout<<"\tjl\t"<<child2->label.false_label<<endl;
-                break;
-            }
-            case OP_EQ:
-            {
-                cout<<"\tjne\t"<<child2->label.false_label<<endl;
-                break;
-            }
-            case OP_NQ:
-            {
-                cout<<"\tje\t"<<child2->label.false_label<<endl;
-                break;
-            }
-            case OP_AND:
-            {
-                break;
-            }
-            case OP_OR:
-            {
-                break;
-            }
-            case OP_NOT:
-            {
-                break;
-            }
-            default:{
-                cout<<"\tcmpl\t$0, %eax"<<endl;//eax-0
-                cout<<"\tje\t"<<child2->label.false_label<<endl;//相等跳转
-                break;
-            }
-        }
+        howRelOpJmp(child2->optype,false,child2->label.false_label);
 
     }
     else if(op==OP_ASSG||op==OP_ADD_ASSG||op==OP_SUB_ASSG)

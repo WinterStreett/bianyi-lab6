@@ -1,20 +1,36 @@
-	.file	"test.c"
-	.text
-	.data
-	.globl	a
-	.align 4
-	.type	a, @object
-	.size	a, 4
-a:
-	.long	0
+lno@0       @0         program     children: [@1 ]
+lno@8       @1        compUnit     children: [@2 ]
+lno@8       @2        function     children: [@3 @4 @5 @6 ]     func_name: main   return_type: int  paraNum: 0
+lno@8       @3            type          type: int
+lno@8       @4        variable       varname: main          type: int
+lno@8       @5           empty
+lno@10       @6       statement     children: [@7 @12 @17 @22 @28 ]          stmt: block
+lno@10       @7       statement     children: [@8 @9 ]          stmt: decl
+lno@10       @8            type          type: int
+lno@10       @9          varDef     children: [@10 @11 ]
+lno@10       @10        variable       varname: a          type: int
+lno@10       @11           const          type: int         value: 1
+lno@11       @12       statement     children: [@13 @14 ]          stmt: decl
+lno@11       @13            type          type: int
+lno@11       @14          varDef     children: [@15 @16 ]
+lno@11       @15        variable       varname: b          type: int
+lno@11       @16           const          type: int         value: 2
+lno@12       @17       statement     children: [@18 @19 ]          stmt: decl
+lno@12       @18            type          type: int
+lno@12       @19          varDef     children: [@20 @21 ]
+lno@12       @20        variable       varname: c          type: int
+lno@12       @21           const          type: int         value: 2
+lno@13       @22       statement     children: [@23 ]          stmt: expression
+lno@13       @23      expression     children: [@24 @25 ]      operator: =          type: int
+lno@13       @24        variable       varname: a          type: int
+lno@13       @25      expression     children: [@26 @27 ]      operator: +=          type: int
+lno@13       @26        variable       varname: b          type: int
+lno@13       @27        variable       varname: c          type: int
+lno@14       @28       statement     children: [@29 ]          stmt: return
+lno@14       @29           const          type: int         value: 0
 
-	.section	.rodata
-	.text
-	.globl main
-	.type  main, @function
-main:
-	pushl	%ebp
-	movl	%esp, %ebp
-	movl	a, %eax
-	movl	$0, %ecx
-	cmpl	%ecx, %eax
+symbol_id   |   name   |   type   |   scope   |   isConst
+   |   0   |   main   |   int   |   global   |   true
+   |   1   |   a   |   int   |   global->8main   |   false
+   |   2   |   b   |   int   |   global->8main   |   false
+   |   3   |   c   |   int   |   global->8main   |   false

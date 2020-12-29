@@ -25,7 +25,7 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                 num++;
                 temp = temp->sibling;
             }
-            node->paraNum = num;
+            TreeNode::nowFunc->paraNum = num;
             break;
         }
         case NODE_FUNCPARAM:

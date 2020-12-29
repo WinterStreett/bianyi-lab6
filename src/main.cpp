@@ -46,12 +46,12 @@ int main(int argc, char *argv[])
 
         root->check(root);
         root->get_label(root);
-        // root->printAST();
-        root->gen_code(root);
+        root->printAST();
+        // root->gen_code(root);
     }
 
-    // cout<<endl;
-    // symtable.printTable();
+    cout<<endl;
+    symtable.printTable();
     // cout<<symtable.nextid()<<endl;
     return 0;
 }
