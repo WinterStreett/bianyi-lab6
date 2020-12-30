@@ -1,10 +1,12 @@
 #include"symTable.h"
 
-symInfo::symInfo(string name, string type, string scope, bool isconst) {
+symInfo::symInfo(string name, string type, string scope, bool isconst,bool isdef,int scopeid) {
 	this->Name = name;
 	this->Type = type;
 	this->Socpe = scope;
 	this->isConst = isconst;
+	this->isDef = isdef;
+	this->scopeID = scopeid;
 }
 
 symTable::symTable(unsigned int begin) {
@@ -17,21 +19,31 @@ symTable::~symTable() {
 }
 }
 
-void symTable::insert(string name, string type, string scope, bool isconst) {
-	symInfo* node = new symInfo(name, type, scope, isconst);
+void symTable::insert(string name, string type, string scope, bool isconst,bool isdef,int scopeid) {
+	symInfo* node = new symInfo(name, type, scope, isconst, isdef, scopeid);
 	table.insert(pair<int, symInfo*>(idCounter++, node));
 }
 
 void symTable::printTable() {
-	cout <<  "symbol_id" << "   |   " << "name" << "   |   " << "type" << "   |   "<< "scope"<<"   |   " <<"isConst"<< endl;
+	cout <<  "symbol_id" << "   |   " << "name" << "   |   " << "type" << "   |   "<< "scope"<<"   |   " <<"isConst";
+	cout<<"   |   " <<"isDef"<<"   |   " <<"scopeID"<<endl;
 	for (auto iter = table.begin(); iter != table.end(); iter++) {
 		cout<< "   |   "  <<  iter->first << "   |   "  << iter->second->Name <<"   |   " << iter->second->Type <<"   |   " << iter->second->Socpe<<"   |   ";
 		if(iter->second->isConst){
-			cout<<"true"<<endl;
+			cout<<"true";
 		}
 		else{
-			cout<<"false"<<endl;
+			cout<<"false";
 		}
+		cout<< "   |   ";
+		if(iter->second->isDef){
+			cout<<"true";
+		}
+		else{
+			cout<<"false";
+		}
+		cout<< "   |   ";
+		cout<<iter->second->scopeID<<endl;
 	}
 }
 
@@ -56,4 +68,17 @@ bool symTable::isConstVar(int id){
 
 bool symTable::isGlobal(int id){
 	return ((table.find(id)->second->Socpe)=="global");
+}
+
+bool symTable::isDefed(int id){
+	return table.find(id)->second->isDef;
+}
+
+int symTable::getScopeID(int id){
+	return table.find(id)->second->scopeID;
+}
+
+void symTable::setDef(int id){
+	table.find(id)->second->isDef = true;
+	return;
 }

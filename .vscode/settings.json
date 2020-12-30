@@ -6,6 +6,10 @@
         "iomanip": "cpp",
         "iostream": "cpp",
         "unordered_map": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "vector": "cpp",
+        "fstream": "cpp"
     }
 }

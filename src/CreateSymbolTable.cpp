@@ -7,9 +7,13 @@ socpetable* globalTable = new socpetable();//存储全局作用域里的符号�
 socpetable* nextTable = globalTable;//方便递归，下一级作用域的指针
 bool isJustOneBlock = true;
 bool isDeclConst = false;
+
+
 string varType;
 extern map<string, int> stringTable;
 int str_num = 0;
+int socpeVarCount = 0;//记录一个函数作用域内的所有变量的顺序ID
+
 
 
 void createSymbolTable(TreeNode* node, socpetable* table){
@@ -26,14 +30,17 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                 temp = temp->sibling;
             }
             TreeNode::nowFunc->paraNum = num;
+            
             break;
         }
         case NODE_FUNCPARAM:
             varType = node->child->type->getTypeInfo();
+            node->child->sibling->isassg = true;
             break;
         case NODE_CONST://将程序中出现的所有string插入stingTable中
         {
             if(node->type->getTypeInfo() == "string"){
+                haveString = true;
                 if(stringTable.find(node->str_val) == stringTable.end()){//字符串不在表中
                     stringTable.insert(pair<string,int>(node->str_val,str_num));
                     node->str_id = str_num++;
@@ -54,7 +61,9 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                     TreeNode::mainNode = temp;
                 }
                 table->insert(node->var_name, symtable.nextid());
-                symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),true);
+ 
+                socpeVarCount = 0;
+                symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),true,true,socpeVarCount);
                 node->child->sibling->isConst = true;//函数名对应的变量isConst属性为真
                 nextTable = new socpetable(table);
                 nextTable->initSocpe(node->lineno, node->var_name); 
@@ -65,22 +74,31 @@ void createSymbolTable(TreeNode* node, socpetable* table){
             if(node->isdecl)
             {
                 if(table == globalTable)
+                {
                     node->isGlobal = true;
+                    haveGlobalVar = true;
+                }
                 table->insert(node->var_name, symtable.nextid());
+                node->tableid = symtable.nextid();
                 node->type = Type::getType(varType);
                 if(!isDeclConst)
-                    symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),false);
+                    symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),false,false,++socpeVarCount);
                 else
                 {
-                    symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),true);
+                    symtable.insert(node->var_name,node->type->getTypeInfo(),table->getsocpe(),true,false,++socpeVarCount);
                     node->isConst = true;
+                    if(node->isGlobal)
+                        haveGlobalConst = true;
                 }
+                
+                TreeNode::tempNUm = socpeVarCount;
             }
             else{
                 int id = table->search(node->var_name);
                 node->type = Type::getType(symtable.getType(id));
                 node->isConst = symtable.isConstVar(id);
                 node->isGlobal = symtable.isGlobal(id);
+                node->tableid = id;
             }
             break;
         case NODE_STMT:
@@ -99,20 +117,24 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                 case STMT_BLOK:
                     if(isJustOneBlock){
                     nextTable = new socpetable(table);
+ 
                     nextTable->initSocpe(node->lineno, "block");
                     }
                     break;
                 case STMT_FOR:
                     nextTable = new socpetable(table);
+
                     nextTable->initSocpe(node->lineno, "for"); 
                     isJustOneBlock = false;
                     goto ergodic;
                 case STMT_WHILE:
+   
                     nextTable = new socpetable(table);
                     nextTable->initSocpe(node->lineno, "while"); 
                     isJustOneBlock = false;
                     goto ergodic;          
                 case STMT_IF:
+
                     nextTable = new socpetable(table);
                     nextTable->initSocpe(node->lineno, "if"); 
                     isJustOneBlock = false;
@@ -120,13 +142,22 @@ void createSymbolTable(TreeNode* node, socpetable* table){
                 case STMT_IOFUNC:
                 {
                     TreeNode::nowFunc->isUseStack = true;
-                    TreeNode* temp = node->child->sibling->child;//实参表
-                    int num = 0;
-                    while(temp!=nullptr){
-                        num++;
+                    if(node->child->sibling)
+                    {
+                        TreeNode* temp = node->child->sibling->child;//实参表
+                        int num = 0;
+                        while(temp!=nullptr){
+                            num++;
                         temp = temp->sibling;
+                        }
+                        node->paraNum = num;
                     }
-                    node->paraNum = num;
+                    else
+                    {
+                        node->paraNum = 0;
+                    }
+                    
+                    
                     break;
                 }
                     
@@ -147,9 +178,11 @@ ergodic:
     {
         delete nextTable;
         nextTable = table;
+
     }
     if(node->stype == STMT_DECL_CONST)
         isDeclConst = false;
     createSymbolTable(node->sibling,table);
+
     return;
 }

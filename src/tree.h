@@ -3,9 +3,13 @@
 
 #include "pch.h"
 #include "type.h"
+#include "symTable.h"
 extern long int current_id;
 extern bool is_use_stack;
 extern map<string, int> stringTable;
+extern bool haveGlobalVar;
+extern bool haveGlobalConst;
+extern bool haveString;
 
 enum NodeType
 {
@@ -142,13 +146,18 @@ public:
     string str_val;
     string var_name;
 
+    int tableid;
     bool isConst;//如果是表达式节点，标记它是不是常量类型
     bool isdecl;//标记一个标识符，说明它是要被定义的变量名
     bool isGlobal;//标记一个标识符是不是全局作用域的
     bool isMyLabelWasCout;
+    bool isassg;//如果这是一个变量结点，标记它有没有处于一个赋值语句中
 
     int str_id;//如果结点为string常量结点，那么这个数组标记它对应的字符串在数据段的编号
+    
     int paraNum;//如果结点为函数实参类型，那么它应该保存实参的个数，在生成符号表时填上
+    // int tempNum;
+    static int tempNUm;//说明main函数里的局部变量数目
 public://类型检查
     void check(TreeNode*);
 private:
@@ -165,6 +174,7 @@ public:
 public://代码生成
     void gen_code(TreeNode*);
     static TreeNode* nowFunc;//在遍历语法树的过程中，处于哪一个函数结点中
+    
     bool isUseStack;//给函数结点的标记，说明这个函数有没有使用栈
     bool exprResult;//表达式结点的代表的式子有没有完成输出代码
 
@@ -180,6 +190,7 @@ private:
     void inst2string(OperatorType);//为不同的操作符，输出不同的汇编指令
     string gen_varname(TreeNode*);
     void howRelOpJmp(OperatorType op,bool ture2jmp, string label);
+    string smallReg(string reg);
 
 
 public:

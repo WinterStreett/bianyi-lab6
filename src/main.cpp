@@ -7,7 +7,7 @@ extern FILE *yyin;
 extern int yyparse();
 
 
-string filename;
+string filename = "who knows";
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -24,17 +24,12 @@ int main(int argc, char *argv[])
             cerr << "failed to open file: " << argv[1] << endl;
         }
     }
-    //获取文件名
-    string buf = argv[1];
-    for(auto c: buf){
-        if(c != '/'){
-            filename.push_back(c);
-        }
-        else{
-            filename = "";
-        }
-    }
+    // 获取文件名
+    // string buf = argv[1];
+    // int temp = buf.find_last_of('\\');
+    // cout<<temp<<endl;
     // cout<<filename<<endl;
+    // filename = argv[1];
     yyparse();
     // //将一些运行库函数先加入符号表
     // globalTable->insert("printf",symtable.nextid());
@@ -46,12 +41,12 @@ int main(int argc, char *argv[])
 
         root->check(root);
         root->get_label(root);
-        root->printAST();
-        // root->gen_code(root);
+        // root->printAST();
+        root->gen_code(root);
     }
 
-    cout<<endl;
-    symtable.printTable();
+    // cout<<endl;
+    // symtable.printTable();
     // cout<<symtable.nextid()<<endl;
     return 0;
 }

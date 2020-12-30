@@ -86,25 +86,25 @@ funcParam
     $$->addChild($2);
     $2->isdecl=true;
 }
-| T IDENTIFIER LSB RSB {
-    $$ = new TreeNode($1->lineno, NODE_FUNCPARAM);
-    $$->addChild($1);
-    $$->addChild($2);  
-    TreeNode* node = new TreeNode($1->lineno, NODE_EMPTY);
-    $$->addChild(node);
-    $2->isdecl=true;
-}
-| T IDENTIFIER LSB expr RSB {
-    $$ = new TreeNode($1->lineno, NODE_FUNCPARAM);
-    $$->addChild($1);
-    $$->addChild($2);  
-    $$->addChild($4);
-    $2->isdecl = true;  
-}
-| funcParam LSB expr RSB{
-    $$ = $1;
-    $$->addChild($3);
-}
+// | T IDENTIFIER LSB RSB {
+//     $$ = new TreeNode($1->lineno, NODE_FUNCPARAM);
+//     $$->addChild($1);
+//     $$->addChild($2);  
+//     TreeNode* node = new TreeNode($1->lineno, NODE_EMPTY);
+//     $$->addChild(node);
+//     $2->isdecl=true;
+// }
+// | T IDENTIFIER LSB expr RSB {
+//     $$ = new TreeNode($1->lineno, NODE_FUNCPARAM);
+//     $$->addChild($1);
+//     $$->addChild($2);  
+//     $$->addChild($4);
+//     $2->isdecl = true;  
+// }
+// | funcParam LSB expr RSB{
+//     $$ = $1;
+//     $$->addChild($3);
+// }
 ;
 
 statements
@@ -225,6 +225,13 @@ IOFunc
     $$->addChild($5);
     is_use_stack = true;
 }
+| PRINTF LBRACKET STRING RBRACKET{
+    $$ = new TreeNode($3->lineno, NODE_STMT);
+    $$->stype = STMT_IOFUNC;
+    $$->var_name = "printf";
+    $$->addChild($3);
+    is_use_stack = true;
+}
 ;
 
 scanfParams
@@ -274,12 +281,14 @@ varDef
     $$ = new TreeNode($1->lineno,NODE_VARDEF);
     $$->addChild($1);
     $1->isdecl = true;
+    $$->optype = OP_NULL;
     // $1->child->isdecl = true;//数组扩展
 }
 | LVal LOP_ASSIGN initVal {
     $$ = new TreeNode($1->lineno,NODE_VARDEF);
     $$->addChild($1);
     $$->addChild($3);
+    $$->optype=OP_ASSG;
     $1->isdecl = true;
     // $1->child->isdecl = true;//数组扩展
 }
@@ -304,6 +313,7 @@ constDef
     $$ = new TreeNode($1->lineno,NODE_VARDEF);
     $$->addChild($1);
     $$->addChild($3);
+    $$->optype = OP_ASSG;
     $1->isdecl = true;
     // $1->child->isdecl = true;//数组扩展
 }

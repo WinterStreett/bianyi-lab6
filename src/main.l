@@ -14,7 +14,7 @@ INTEGER (0|[1-9][0-9]*)
 OCTALNUM 0[0-7]+
 HEXNUM 0x([0-9]|[A-F]|[a-f])+
 
-CHAR \'.?\'
+CHAR \'\\?.\'
 STRING \".+\"
 
 
@@ -117,7 +117,79 @@ IDENTIFIER [[:alpha:]_][[:alpha:][:digit:]_]*
     TreeNode* node = new TreeNode(lineno, NODE_CONST);
     node->type = TYPE_CHAR;
     node->isConst = true;
-    node->ch_val = yytext[1];
+    if(yytext[1]=='\\')
+    {
+        switch(yytext[2])
+        {
+            case 'a':
+            {
+                node->ch_val = '\a';
+                break;
+            }
+            case 'b':
+            {
+                node->ch_val = '\b';
+                break;
+            }
+            case 'f':
+            {
+                node->ch_val = '\f';
+                break;
+            }
+            case 'n':
+            {
+                node->ch_val = '\n';
+                break;
+            }
+            case 'r':
+            {
+                node->ch_val = '\r';
+                break;
+            }
+            case 't':
+            {
+                node->ch_val = '\t';
+                break;
+            }
+            case 'v':
+            {
+                node->ch_val = '\v';
+                break;
+            }
+            case '\\':
+            {
+                node->ch_val = '\\';
+                break;
+            }
+            case '\'':
+            {
+                node->ch_val = '\'';
+                break;
+            }
+            case '\"':
+            {
+                node->ch_val = '\"';
+                break;
+            }
+            case '?':
+            {
+                node->ch_val = '?';
+                break;
+            }
+            case '0':
+            {
+                node->ch_val = '\0';
+                break;
+            }
+            default:
+            {
+                cerr<<"unknown char line:"<<lineno<<endl;
+                exit(-1);
+            }
+        }
+    }
+    else
+        node->ch_val = yytext[1];
     node->expType = EXP_CHAR;
     yylval = node;
     return CHAR;

@@ -19,8 +19,8 @@ struct symInfo {
 	bool isConst;
 	bool isDef;
 	int scopeID;
-	symInfo(string name, string type, string scope,bool isconst);
-	// symInfo(string name, string type, string scope,bool isconst,bool isdef,int scopeid);
+	// symInfo(string name, string type, string scope,bool isconst);
+	symInfo(string name, string type, string scope,bool isconst,bool isdef,int scopeid);
 };
 
 
@@ -28,12 +28,15 @@ class symTable {
 public:
 	symTable(unsigned int begin);
 	~symTable();
-	void insert(string name, string type, string scope,bool isconst);
+	void insert(string name, string type, string scope,bool isconst,bool isdef,int scopeid);
 	void printTable();
     unsigned int nextid();
 	string getType(int id);
 	bool isConstVar(int id);
 	bool isGlobal(int id);
+	bool isDefed(int id);
+	void setDef(int id);
+	int getScopeID(int id);
 
 private:
 	map<int, symInfo*> table;

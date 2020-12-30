@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -Wall -Wextra -std=c++11 -g # without debug
+CFLAGS := -Wall -Wextra -std=c++11 -g  # without debug
 TARGET := ./bin/main
 
 all: run
@@ -20,7 +20,7 @@ yacc: src/main.tab.c
 main: src/pch.h.gch
 	$(CC) $(CFLAGS) $(shell ls ./src/*.cpp) -o ./bin/main
 
-.PHONY: all clean main run lex yacc test debug link testscope asm nasm example-code out
+.PHONY: all clean main run lex yacc test debug link testscope asm nasm example-code out trans
 
 run: lex yacc main
 
@@ -29,3 +29,6 @@ clean:
 
 test: 
 	./bin/main tests/test.c > result.txt
+
+trans:
+	cp bin/main ../lab6_test/main.out
