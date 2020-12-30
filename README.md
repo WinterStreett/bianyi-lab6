@@ -2,29 +2,15 @@
 1. int和char类型变量的声明和初始化
 2. 算术表达式
 3. 逻辑表达式
-4. if-else语句 while循环 for循环 break continue return 语句 
+4. if-else语句 while循环 for循环 return 语句 
 5. 赋值语句
 6. 语句块
-7. 函数声明和定义+函数形参表+函数实参+函数调用语句
-8. printf和scanf两个IO函数
+7. printf和scanf两个IO函数
+8. 常量声明，类型检查
 9. 变量列表
 10. 符号表构造与输出
-11. 任意维数组
-12. 注释，多行注释，保证行号正确
-
-计划：
-1. 需要实现的stmt类型
-    - STMT_ASSG
-    - STMT_IF
-    - STMT_IFELSE
-    - STMT_WHILE
-    - STMT_RETURN
-    - STMT_FOR
-    - STMT_IOFUNC
-    - STMT_FOR_DECL
-2. 实现了以上的特性，再考虑局部变量的分配
-    - 保底可以用全局变量存局部变量
-    - 可以尝试在栈中，分配main函数的局部变量
+11. 注释，多行注释，保证行号正确
+12. 临时变量在栈上分配
 
 备忘录：
 1. 所有的表达式节点的type都是int，如果是单个变量组成的表达式，也是int类型
